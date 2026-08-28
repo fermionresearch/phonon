@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Model artifacts are downloaded, never committed.
+model_v18_mlx_quint5*/
+*.tar.zst
+*.safetensors
+
+# Downloaded by the quickstart into the repo root; the published copy on the
+# Hugging Face repo is the authority, so a local copy is never committed.
+/config.json
+
+# Release binaries are attached to GitHub Releases, never to the git tree.
+*.dmg

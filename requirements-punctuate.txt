@@ -1,0 +1,6 @@
+# Optional extras for `--punctuate` (display-only punctuation + truecasing).
+# Not required for transcription. Installs a CPU ONNX runtime; the 210 MB
+# English punctuation model (1-800-BAD-CODE, Apache-2.0) is downloaded on
+# first use into the standard Hugging Face cache and then runs fully offline.
+punctuators==0.0.7
+onnxruntime==1.28.0

@@ -1,0 +1,60 @@
+Phonon
+Copyright 2026 Fermion Research
+
+This product includes software and models developed by Fermion Research.
+
+================================================================================
+BASE MODEL
+================================================================================
+
+This model is derived from Qwen/Qwen3-ASR-0.6B, licensed under the
+Apache License, Version 2.0.
+
+    https://huggingface.co/Qwen/Qwen3-ASR-0.6B
+    https://www.apache.org/licenses/LICENSE-2.0
+
+The audio encoder architecture, tokenizer (vocab.json, merges.txt,
+tokenizer_config.json), chat template, generation config and preprocessor
+config derive from that model and remain under Apache-2.0.
+
+
+================================================================================
+BUNDLED SAMPLE AUDIO
+================================================================================
+
+samples/1089-134691-0000.flac
+samples/1089-134691.trans.txt
+
+    From the LibriSpeech ASR corpus (Panayotov, Chen, Povey, Khudanpur;
+    ICASSP 2015; https://www.openslr.org/12/), licensed CC-BY 4.0.
+    Used as the runtime warm-up clip and as the quickstart example.
+
+================================================================================
+RUNTIME DEPENDENCIES
+================================================================================
+
+MLX ......................... MIT License ......... https://github.com/ml-explore/mlx
+mlx-audio ................... MIT License ......... https://github.com/Blaizzy/mlx-audio
+NumPy ....................... BSD-3-Clause ........ https://numpy.org
+SciPy ....................... BSD-3-Clause ........ https://scipy.org
+sounddevice ................. MIT License ......... https://github.com/spatialaudio/python-sounddevice
+soundfile ................... BSD-3-Clause ........ https://github.com/bastibe/python-soundfile
+    soundfile links libsndfile (LGPL-2.1), dynamically and unmodified, as
+    distributed in the standard soundfile wheel.
+
+================================================================================
+OPTIONAL --punctuate DEPENDENCIES
+================================================================================
+
+Not installed by default. Required only for the display-only punctuation and
+truecasing pass.
+
+punctuators ................. Apache-2.0 .......... https://github.com/1-800-BAD-CODE/punctuators
+onnxruntime ................. MIT License ......... https://onnxruntime.ai
+
+Punctuation / truecasing / sentence-boundary models, all Apache-2.0, downloaded
+on first use and run locally on CPU:
+
+    1-800-BAD-CODE/punctuation_fullstop_truecase_english
+    1-800-BAD-CODE/punct_cap_seg_47_language
+    1-800-BAD-CODE/xlm-roberta_punctuation_fullstop_truecase
