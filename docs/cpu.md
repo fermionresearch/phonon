@@ -17,18 +17,6 @@ Input envelope: English, 16 kHz audio (mono or stereo). Longer recordings
 are segmented and stitched exactly as the other runtimes do. Anything
 outside the envelope is refused with an actionable message.
 
-## Speed
-
-Single stream, measured end-to-end (audio in, text out, model load
-excluded):
-
-| machine | Phonon-1 | Phonon-1 Big | Phonon-1 Micro |
-|---|---|---|---|
-| Apple silicon (M-series) | 11.8× realtime | 11.7× realtime | 10.7× realtime |
-
-Memory while transcribing peaks at 5.4–6.6 GB depending on the model.
-First load: about 11.5 s.
-
 ## Transcribe with the `fermion` CLI
 
 ```sh
