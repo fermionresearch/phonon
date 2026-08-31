@@ -37,8 +37,8 @@ jobs:
           push: true
           provenance: false
           tags: |
-            ghcr.io/fermionresearch/phonon-cuda:0.2.0
+            ghcr.io/fermionresearch/phonon-cuda:0.3.0
             ghcr.io/fermionresearch/phonon-cuda:latest
 
       - name: Report digest
-        run: docker buildx imagetools inspect ghcr.io/fermionresearch/phonon-cuda:0.2.0
+        run: docker buildx imagetools inspect ghcr.io/fermionresearch/phonon-cuda:0.3.0

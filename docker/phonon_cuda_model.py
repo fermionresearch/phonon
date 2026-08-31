@@ -33,6 +33,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from phonon_cuda_artifact import Fold4Matrix, load_fold4_matrix
+from phonon_cuda_hybrid import artifact_profile, hybrid_artifact_state
 from phonon_cuda_runtime import CudaKernelLibrary, Fold4CudaMatrix
 
 
@@ -184,6 +185,7 @@ class PhononCudaBundle:
     processor: object
     projections: list[PhononFold4Linear]
     kernel_library: CudaKernelLibrary | None = None
+    profile: dict | None = None  # artifact storage profile (parity/audio6/micro)
 
     def enable_packed_decode(self, library_path: str | Path | None = None) -> None:
         if self.kernel_library is not None:
@@ -240,7 +242,24 @@ def load_phonon_cuda(
         _set_child(model.thinker, name, projection)
         projections.append(projection)
 
-    incompatible = model.load_state_dict(_artifact_state(model_dir), strict=False)
+    # The three published models share the decoder format above; they differ
+    # in how the audio tower and the tied embedding are STORED. The
+    # dense-tower model keeps the original BF16 state loader, unchanged. The
+    # quantized-tower models store MLX affine tensors that dequantize to
+    # dense fp32 values (scales * code + biases from BF16 metadata is not
+    # generally BF16-representable), so for them the graph is made fp32
+    # FIRST — otherwise ``load_state_dict`` would round the dequantized
+    # values through the graph's default BF16 parameters — and stays fp32
+    # end to end (the configuration the CPU runtime's transcript gates
+    # passed; the fold4 decoder buffers upcast exactly).
+    profile = artifact_profile(model_dir)
+    if profile["hybrid"]:
+        model.float()
+        state = hybrid_artifact_state(model_dir)
+    else:
+        state = _artifact_state(model_dir)
+    incompatible = model.load_state_dict(state, strict=False)
+    del state
     unexpected = list(incompatible.unexpected_keys)
     missing = [name for name in incompatible.missing_keys if name != "thinker.lm_head.weight"]
     if unexpected or missing:
@@ -251,7 +270,8 @@ def load_phonon_cuda(
     model.tie_weights()
     model.eval().to(device)
     processor = Qwen3ASRProcessor.from_pretrained(model_dir, fix_mistral_regex=True)
-    bundle = PhononCudaBundle(model=model, processor=processor, projections=projections)
+    bundle = PhononCudaBundle(model=model, processor=processor,
+                              projections=projections, profile=profile)
     if packed_decode:
         bundle.enable_packed_decode(library_path)
     return bundle

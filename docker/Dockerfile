@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir \
         soundfile \
         numpy \
         huggingface_hub \
+        zstandard \
     && pip install --no-cache-dir qwen-asr==0.0.6 --no-deps
 
 RUN useradd --create-home --uid 1001 phonon \
@@ -20,8 +21,9 @@ RUN useradd --create-home --uid 1001 phonon \
         > /usr/local/bin/phonon-cuda \
     && chmod 0755 /usr/local/bin/phonon-cuda
 
-COPY phonon_cuda_model.py phonon_cuda_artifact.py phonon_cuda_runtime.py \
-     _multipart.py _ws.py _live.py entrypoint.py /opt/phonon/
+COPY phonon_cuda_model.py phonon_cuda_artifact.py phonon_cuda_hybrid.py \
+     phonon_cuda_runtime.py _archive.py _multipart.py _ws.py _live.py \
+     entrypoint.py /opt/phonon/
 COPY bin/libphonon_fold4_cuda.so /opt/phonon/bin/libphonon_fold4_cuda.so
 
 ENV PHONON_CUDA_LIBRARY=/opt/phonon/bin/libphonon_fold4_cuda.so \

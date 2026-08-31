@@ -3,21 +3,27 @@
 
 Two modes:
 
-  phonon-cuda transcribe <audio...> [--model-dir DIR | --repo REPO]
+  phonon-cuda transcribe <audio...> [--model NAME] [--model-dir DIR]
       Transcribe 16 kHz recordings to stdout. Single utterances (<= 30 s)
       decode in one gated call; longer recordings are segmented by the same
       energy gate the Mac engine uses and the finals joined with spaces.
 
   phonon-cuda serve [--host 127.0.0.1] [--port 8000] [--api-key KEY]
-                    [--max-queue N] [--model-dir DIR | --repo REPO]
+                    [--max-queue N] [--model NAME | --model-dir DIR]
       OpenAI-compatible endpoints: POST /v1/audio/transcriptions (the
       Whisper API multipart shape), GET /v1/audio/stream (RFC 6455
       WebSocket, the same protocol as the Mac `fermion serve`),
       GET /health, GET /.
 
+All three published models run here: `--model phonon-1-big` (the default),
+`--model phonon-1`, `--model phonon-1-micro`. Without `--model-dir` the
+model's release archive is downloaded from Hugging Face, verified against
+its published SHA-256 pin, and unpacked; with `--model-dir` a local copy
+is used and its manifest must match the requested model.
+
 The default execution path is dense-from-fold4: stock Torch matmuls over
-BF16 weights reconstructed at load time from the published five-state packed
-artifact. That is the transcript-gated configuration (greedy decode,
+dense weights reconstructed at load time from the published five-state
+packed artifact. That is the transcript-gated configuration (greedy decode,
 temperature 0.0, max 512 new tokens, no repetition penalty, FP32 audio-tower
 activations) — identical to the benchmark runs behind the published numbers.
 Long audio and streams are segmented (never resampled, never truncated) and
@@ -43,14 +49,48 @@ from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 BRAND = "phonon-cuda"
-DEFAULT_REPO = "FermionResearch/Phonon-1-Big"
-MODEL_ID = "phonon-1-big"
-KNOWN_MODEL_NAMES = {
-    "", MODEL_ID, "phonon", "phonon-1", "phonon-cuda",
-    DEFAULT_REPO.lower(), "fermionresearch/phonon-1-big",
+
+#: The published models this image serves. Release facts (archive filename,
+#: SHA-256, byte count) are pinned per release; the profile key names the
+#: artifact storage layout the loader verifies against the directory.
+CATALOG = {
+    "phonon-1": {
+        "name": "Phonon-1",
+        "repo": "FermionResearch/Phonon-1",
+        "profile": "audio6",
+        "filename": "phonon-audio6.bps.tar.zst",
+        "sha256": "214c3b45aa57257013811a53f99a905848466ad4ab21f2b2f8368f7ac79427b2",
+        "download_bytes": 415_077_202,
+        "aliases": ("phonon-1", "phonon-audio6"),
+    },
+    "phonon-1-big": {
+        "name": "Phonon-1 Big",
+        "repo": "FermionResearch/Phonon-1-Big",
+        "profile": "parity",
+        "filename": "phonon-parity.bps.tar.zst",
+        "sha256": "5dbd566d022a05bac045d1e84f0bf6188999494070e2a00dc5fd1bac6caffdb9",
+        "download_bytes": 580_892_956,
+        "aliases": ("phonon-1-big", "phonon-big", "big"),
+    },
+    "phonon-1-micro": {
+        "name": "Phonon-1 Micro",
+        "repo": "FermionResearch/Phonon-1-Micro",
+        "profile": "micro",
+        "filename": "phonon-micro.bps.tar.zst",
+        "sha256": "8a03e55d78e65c10f6ce22aff7e32359ca6a7aaa27973435b9ebc3cdbff13f9c",
+        "download_bytes": 285_083_584,
+        "aliases": ("phonon-1-micro", "phonon-micro", "micro"),
+    },
 }
+#: The container served exactly this model through 0.1.0/0.2.0; keeping it
+#: as the default keeps every existing `docker run` line behaving the same.
+DEFAULT_MODEL = "phonon-1-big"
+
+#: Names any server accepts in the `model` form field regardless of which
+#: model it is serving (family names, not model-distinguishing ones).
+GENERIC_MODEL_NAMES = {"", "phonon", "phonon-cuda"}
 SAMPLE_RATE = 16_000
 MAX_SECONDS = 30.0          # the single-utterance gated envelope
 MAX_LONG_SECONDS = 2 * 3600  # sanity cap for the long-audio path
@@ -113,28 +153,81 @@ def decode_audio(source, label: str):
 
 
 # --------------------------------------------------------------------- model
-def resolve_model_dir(args) -> Path:
+def resolve_model_name(spec: str | None) -> str:
+    """Alias or repo id (any case) -> canonical catalog key, or refuse."""
+    if not spec:
+        return DEFAULT_MODEL
+    wanted = str(spec).strip().lower()
+    for key, entry in CATALOG.items():
+        if wanted in entry["aliases"] or wanted == entry["repo"].lower():
+            return key
+    raise SystemExit(
+        f"[{BRAND}] unknown model {spec!r}; this image serves "
+        f"{', '.join(CATALOG)} (and their aliases)")
+
+
+def profile_to_model(profile: str) -> str:
+    return next(k for k, v in CATALOG.items() if v["profile"] == profile)
+
+
+def model_cache_root() -> Path:
+    override = os.environ.get("PHONON_HOME")
+    if override:
+        return Path(override).expanduser()
+    return Path.home() / ".cache" / "phonon"
+
+
+def _directory_profile(model_dir: Path, claimed: str | None) -> str:
+    """The profile key a model directory holds, cross-checked with the
+    caller's claim — refuse, never guess, on a mismatch or an unknown
+    layout."""
+    if not (model_dir / "packed_manifest.json").is_file():
+        fail(f"{model_dir} does not look like a Phonon-1 model directory "
+             f"(missing packed_manifest.json)")
+    from phonon_cuda_hybrid import artifact_profile
+
+    try:
+        found = artifact_profile(model_dir)["key"]
+    except ValueError as exc:
+        fail(str(exc))
+    if found == "hybrid":
+        fail("this model directory is not one of the published Phonon-1 "
+             "models (Phonon-1, Phonon-1 Big, Phonon-1 Micro)")
+    if claimed is not None and claimed != found:
+        fail(f"the requested model is the {claimed!r} build but the "
+             f"directory holds {found!r} — point at the matching directory")
+    return found
+
+
+def resolve_model(args) -> tuple[str, Path]:
+    """-> (canonical model key, model directory). Downloads if needed."""
+    spec = args.model or getattr(args, "repo", None)
+    if args.model and getattr(args, "repo", None) \
+            and resolve_model_name(args.model) != resolve_model_name(args.repo):
+        fail("--model and --repo name different models; pass one of them")
     if args.model_dir:
         model_dir = Path(args.model_dir).expanduser().resolve()
-    else:
-        repo = args.repo or DEFAULT_REPO
-        log(f"downloading {repo} via huggingface_hub (set --model-dir to use "
-            f"a local copy) ...")
-        try:
-            from huggingface_hub import snapshot_download
-            model_dir = Path(snapshot_download(repo_id=repo))
-        except Exception as exc:
-            fail(f"could not download {repo}: {exc}")
-    if not (model_dir / "packed_manifest.json").is_file():
-        fail(f"{model_dir} does not look like a Phonon-1-Big download "
-             f"(missing packed_manifest.json)")
-    return model_dir
+        claimed = CATALOG[resolve_model_name(spec)]["profile"] if spec else None
+        profile = _directory_profile(model_dir, claimed)
+        return profile_to_model(profile), model_dir
+
+    key = resolve_model_name(spec)
+    entry = CATALOG[key]
+    import _archive
+    dest = model_cache_root() / "models" / key
+    try:
+        model_dir = _archive.ensure_model(
+            entry["repo"], entry["filename"], entry["sha256"],
+            entry["download_bytes"], dest, log=log)
+    except Exception as exc:
+        fail(f"could not fetch {entry['repo']}: {exc}")
+    return key, model_dir
 
 
 class Transcriber:
     """Loads the model once; the gated dense decode path, packed opt-in."""
 
-    def __init__(self, model_dir: Path):
+    def __init__(self, model_key: str, model_dir: Path):
         try:
             import torch
         except ImportError:
@@ -144,6 +237,11 @@ class Transcriber:
                  "GPU (docker run --gpus all ...); on Apple silicon use the "
                  "MLX runtime instead.")
         self.torch = torch
+        self.model_key = model_key
+        self.entry = CATALOG[model_key]
+        self.accepted_names = (GENERIC_MODEL_NAMES
+                               | set(self.entry["aliases"])
+                               | {self.entry["repo"].lower()})
 
         from phonon_cuda_model import _qwen_backend_modules, load_phonon_cuda
 
@@ -151,7 +249,7 @@ class Transcriber:
         self._feat_out_lengths = processing._get_feat_extract_output_lengths
 
         started = time.perf_counter()
-        log(f"loading {model_dir.name} ...")
+        log(f"loading {self.entry['name']} from {model_dir} ...")
         bundle = load_phonon_cuda(model_dir, device="cuda")
         # Gated numerics class: FP32 activations through the BF16-valued
         # audio tower (exact upcast), BF16 decoder.
@@ -263,8 +361,10 @@ class Transcriber:
 
     def describe(self) -> dict:
         return {
-            "model": MODEL_ID,
-            "repo": DEFAULT_REPO,
+            "model": self.model_key,
+            "model_name": self.entry["name"],
+            "repo": self.entry["repo"],
+            "profile": self.entry["profile"],
             "path": "packed-int8-EXPERIMENTAL" if self.packed
                     else "dense-from-fold4 (gated)",
             "packed_decode": self.packed,
@@ -294,7 +394,7 @@ def cmd_transcribe(args) -> None:
             fail(str(exc))
         waveforms.append((path, wav, duration))
 
-    engine = Transcriber(resolve_model_dir(args))
+    engine = Transcriber(*resolve_model(args))
     for path, wav, duration in waveforms:
         t0 = time.perf_counter()
         text, segments = engine.transcribe_long(wav)
@@ -424,7 +524,7 @@ class Handler(BaseHTTPRequestHandler):
         if route == "/":
             return self._send_json(200, {
                 "service": f"{BRAND} serve", "version": VERSION,
-                "model": MODEL_ID,
+                "model": self.engine.model_key,
                 "endpoints": ["/v1/audio/transcriptions", "/v1/audio/stream",
                               "/health"]})
         return self._err(404, f"unknown route {route!r}; this server mounts "
@@ -442,9 +542,10 @@ class Handler(BaseHTTPRequestHandler):
         if route != "/v1/audio/transcriptions":
             self._drain_body()
             return self._err(
-                404, f"{route} is not served here. {MODEL_ID} is a speech "
-                     f"model; this server mounts POST "
-                     f"/v1/audio/transcriptions.", code="not_found")
+                404, f"{route} is not served here. "
+                     f"{self.engine.entry['name']} is a speech model; this "
+                     f"server mounts POST /v1/audio/transcriptions.",
+                code="not_found")
         if self.server.draining:  # type: ignore[attr-defined]
             self._drain_body()
             return self._err(503, "server is draining for shutdown",
@@ -496,10 +597,10 @@ class Handler(BaseHTTPRequestHandler):
         # `model` is accepted and checked, never silently ignored.
         want = form.get("model")
         if isinstance(want, str) and want.strip() \
-                and want.strip().lower() not in KNOWN_MODEL_NAMES:
+                and want.strip().lower() not in self.engine.accepted_names:
             return self._err(
                 404, f"model {want.strip()!r} is not served here; this "
-                     f"process serves {MODEL_ID}",
+                     f"process serves {self.engine.model_key}",
                 param="model", code="model_not_found")
 
         fmt = form.get("response_format") or "json"
@@ -753,7 +854,7 @@ def cmd_serve(args) -> None:
              f"`--host 0.0.0.0 --api-key <key>` plus "
              f"`docker run -p 127.0.0.1:8000:8000` is the recommended shape.")
 
-    engine = Transcriber(resolve_model_dir(args))
+    engine = Transcriber(*resolve_model(args))
     server = DrainingHTTPServer((args.host, args.port), Handler)
     server.engine = engine  # type: ignore[attr-defined]
     server.api_key = api_key  # type: ignore[attr-defined]
@@ -775,7 +876,7 @@ def cmd_serve(args) -> None:
 
     signal.signal(signal.SIGTERM, _sigterm)
 
-    log(f"serving {MODEL_ID} on http://{args.host}:{args.port} "
+    log(f"serving {engine.model_key} on http://{args.host}:{args.port} "
         f"(auth={'bearer' if api_key else 'none, loopback only'}, "
         f"max-queue={server.max_queue}) — "  # type: ignore[attr-defined]
         f"POST /v1/audio/transcriptions, GET /v1/audio/stream")
@@ -791,13 +892,17 @@ def cmd_serve(args) -> None:
 # ---------------------------------------------------------------------- main
 def _add_model_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
+        "--model", default=None,
+        help="which published model to run: phonon-1-big (default), "
+             "phonon-1, or phonon-1-micro (aliases and repo ids accepted)")
+    parser.add_argument(
         "--model-dir",
-        help="local download of FermionResearch/Phonon-1-Big "
-             "(mount it into the container, e.g. -v /path:/model)")
+        help="local unpacked model directory (mount it into the container, "
+             "e.g. -v /path:/model); its manifest must match --model")
     parser.add_argument(
         "--repo", default=None,
-        help=f"Hugging Face repo to download (default {DEFAULT_REPO}) "
-             f"when --model-dir is not given")
+        help="earlier releases' spelling of --model: a published Hugging "
+             "Face repo id, downloaded when --model-dir is not given")
 
 
 def main() -> None:

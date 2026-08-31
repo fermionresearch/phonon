@@ -1,20 +1,32 @@
 # Phonon-1 CUDA Docker image
 
-Runs [Phonon-1 Big](https://huggingface.co/FermionResearch/Phonon-1-Big) on
+Runs [Phonon-1](https://huggingface.co/FermionResearch/Phonon-1),
+[Phonon-1 Big](https://huggingface.co/FermionResearch/Phonon-1-Big) (the
+default) and
+[Phonon-1 Micro](https://huggingface.co/FermionResearch/Phonon-1-Micro) on
 NVIDIA GPUs. The image's default execution path is **dense-from-fold4**:
-standard Torch matmuls over BF16 weights reconstructed at load time from the
-published packed artifact. That is the configuration behind the published
-CUDA accuracy numbers (greedy decode, temperature 0.0, max 512 tokens, no
-repetition penalty) — measured on LibriSpeech at parity with the Apple/MLX
-flagship path (same accuracy; transcripts are not word-identical across
-backends).
+standard Torch matmuls over dense weights reconstructed at load time from
+the published packed artifact. That is the configuration behind the
+published CUDA accuracy numbers (greedy decode, temperature 0.0, max 512
+tokens, no repetition penalty) — accuracy is matched against each model's
+Mac reference on paired test sets (same accuracy; transcripts are not
+word-identical across backends).
 
 Requires an NVIDIA GPU (Ampere or newer recommended) and the NVIDIA
 Container Toolkit.
 
 ## Versions
 
-- **`0.2.0`** — the current release: long-audio transcription (files over 30 s
+- **`0.3.0`** — the current release: all three published models. `--model`
+  selects `phonon-1-big` (still the default, so existing run lines behave
+  exactly as before), `phonon-1`, or `phonon-1-micro`; without
+  `--model-dir` the requested model's release archive is downloaded from
+  Hugging Face, verified against its published SHA-256 pin, and unpacked.
+  The server's `model` form field now names one of the three published
+  models (`phonon` stays accepted on any server); a server running
+  Phonon-1 Big answers to `phonon-1-big`, not `phonon-1`, which names the
+  flagship model.
+- **`0.2.0`** — long-audio transcription (files over 30 s
   are segmented and stitched), live streaming over WebSocket
   (`/v1/audio/stream`, the same protocol as the Mac server), and bounded
   request queueing for concurrent clients. Each capability below is marked
@@ -33,8 +45,10 @@ docker run --rm --gpus all \
   transcribe /audio/recording.wav --model-dir /model
 ```
 
-Without `--model-dir` the model is downloaded from Hugging Face
-(`--repo FermionResearch/Phonon-1-Big` is the default).
+`--model phonon-1` and `--model phonon-1-micro` select the other published
+models. Without `--model-dir` the requested model's release archive is
+downloaded from Hugging Face, verified against its published SHA-256 pin,
+and unpacked (`phonon-1-big` is the default).
 
 Input envelope: English, 16 kHz audio (mono or stereo). In `0.1.0-preview`,
 single utterances up to 30 seconds; from `0.2.0`, longer recordings are
@@ -56,7 +70,7 @@ docker run --rm --gpus all -p 127.0.0.1:8000:8000 \
 ```sh
 curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
   -H "Authorization: Bearer change-me" \
-  -F file=@recording.wav -F model=phonon-1
+  -F file=@recording.wav -F model=phonon-1-big
 ```
 
 `POST /v1/audio/transcriptions` takes the Whisper API multipart shape
@@ -128,7 +142,8 @@ like-for-like ahead of a gated release.
 ## What is in the image
 
 The Phonon runtime adapters (`phonon_cuda_model.py`,
-`phonon_cuda_artifact.py`, `phonon_cuda_runtime.py`), the CLI/server
+`phonon_cuda_artifact.py`, `phonon_cuda_hybrid.py`,
+`phonon_cuda_runtime.py`, `_archive.py`), the CLI/server
 entrypoint, stdlib multipart and WebSocket modules, and the compiled kernel
 binary. No kernel source ships in this image. Model weights are not baked
 in — mount them or let the entrypoint download them.
