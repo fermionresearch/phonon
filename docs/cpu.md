@@ -1,10 +1,10 @@
 # Running on CPUs
 
 Phonon-1, Phonon-1 Big and Phonon-1 Micro transcribe speech on ordinary
-CPUs — no GPU required. Supported machines: x86-64 Linux and Windows
-(AVX2, which is any mainstream CPU from roughly 2014 on) and Apple
-silicon Macs. The models are the same published archives the other
-runtimes use (415 MB, 581 MB and 285 MB downloads), decoded with the same
+CPUs — no GPU required. Supported machines: x86-64 and 64-bit ARM
+Linux, x86-64 Windows (AVX2 on x86-64, which is any mainstream CPU
+from roughly 2014 on; NEON on ARM) and Apple silicon Macs. The models
+are the same published archives the other runtimes use (415 MB, 581 MB and 285 MB downloads), decoded with the same
 configuration behind the published accuracy numbers (greedy decode,
 temperature 0.0, max 512 tokens).
 `--model phonon` is Phonon-1, the default, exactly as on a Mac.
@@ -45,7 +45,7 @@ https://download.pytorch.org/whl/cpu`) skips the much larger GPU build.
 ## Threads
 
 The runtime picks its own thread counts: six performance cores on Apple
-silicon, up to sixteen cores on x86-64. There is nothing to configure.
+silicon, up to sixteen cores elsewhere. There is nothing to configure.
 
 ## Run the container
 

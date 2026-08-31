@@ -42,7 +42,8 @@ fermion transcribe clip.wav # first run downloads the default model (415 MB)
 
 ## Linux, Windows and Intel Macs
 
-On x86-64 Linux and Windows, the speech verbs run on the CPU:
+On Linux (x86-64 and 64-bit ARM) and x86-64 Windows, the speech verbs
+run on the CPU:
 
 ```bash
 pip install fermion-research torch safetensors soundfile scipy zstandard
