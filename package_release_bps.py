@@ -201,6 +201,9 @@ def pack(profile: str, level: int, out_dir: Path) -> dict:
 
 
 def unpack(archive: Path, dest: Path) -> dict:
+    # Resolve symlinks first: some zstd builds print "is a symbolic link,
+    # ignoring" for a symlinked input, exit 0, and produce an empty stream.
+    archive = Path(archive).resolve()
     dest.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
     process = subprocess.Popen(["zstd", "-q", "-d", "-c", str(archive)],

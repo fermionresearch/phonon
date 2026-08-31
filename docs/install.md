@@ -42,20 +42,28 @@ fermion transcribe clip.wav # first run downloads the default model (415 MB)
 
 ## Linux, Windows and Intel Macs
 
-The speech verbs refuse cleanly, in one line, before downloading anything:
+On x86-64 Linux and Windows, the speech verbs run on the CPU:
 
-```
-`fermion transcribe` is unavailable: Phonon runs on Apple silicon (arm64
-macOS) only — this is Linux/x86_64. The speech model decodes through MLX,
-which is Apple-silicon-only; there is no CUDA or x86 build. The language
-models (`fermion chat`, `fermion generate`, `fermion serve`) run here
-normally.
+```bash
+pip install fermion-research torch safetensors soundfile scipy zstandard
+fermion transcribe recording.wav
 ```
 
-Everything Neutrino (`fermion chat`, `fermion generate`, `fermion serve`
-with a language model, `fermion models`) works on these platforms as normal.
-For running Phonon on NVIDIA GPUs there is a separate experimental preview;
-see [docs/cuda.md](cuda.md).
+On Linux, install torch from its CPU wheel index first (`pip install
+torch --index-url https://download.pytorch.org/whl/cpu`) to skip the much
+larger GPU build. On Windows the plain torch wheel already is the CPU
+build; a clean machine may also need Microsoft's `vc_redist.x64.exe` (the
+fix when `import torch` fails with WinError 126). If anything is missing,
+the command prints the exact install line for this platform and exits.
+Speed, memory and container details are in [docs/cpu.md](cpu.md); both
+Docker images also run under Docker Desktop on Windows, and the CPU image
+needs no GPU.
+
+On Intel Macs and Windows ARM, the speech verbs refuse cleanly, in one
+line, before downloading anything. Everything Neutrino (`fermion chat`,
+`fermion generate`, `fermion serve` with a language model,
+`fermion models`) works on these platforms as normal. For running Phonon on
+NVIDIA GPUs, see [docs/cuda.md](cuda.md).
 
 ## Air-gapped / offline install
 

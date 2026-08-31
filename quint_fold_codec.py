@@ -1,6 +1,6 @@
 """Fold the two 2-bit V18 decoder planes into one affine plane.
 
-Background (measured in ``INFERENCE_OPTIMIZATION_ROUND3_20260818.md``): MLX's
+Background (measured): MLX's
 ``quantized_matmul`` cost at prefill shapes is essentially independent of bit
 width -- 2, 3, 4, 5, 6 and 8 bits all land within noise of each other, because
 the kernel is dequantize/compute bound rather than bandwidth bound.  The V18

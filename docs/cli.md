@@ -2,12 +2,12 @@
 
 The `fermion` command ships in the `fermion-research` pip package
 (version 0.1.17 at the time of writing). One CLI runs two model families:
-**Phonon** (speech recognition, Apple silicon) and **Neutrino** (language
+**Phonon** (speech recognition, Apple silicon and x86-64 CPUs) and **Neutrino** (language
 models, all platforms). This page covers the speech commands in full and the
 Neutrino commands in brief.
 
 ```
-fermion transcribe   one-shot file transcription (Apple silicon)
+fermion transcribe   one-shot file transcription (Apple silicon, x86-64 CPU)
 fermion listen       live microphone transcription (Apple silicon)
 fermion serve        OpenAI-compatible HTTP server (speech or LLM)
 fermion models       list published models and what is installed
@@ -16,7 +16,9 @@ fermion generate     Neutrino one-shot completion
 ```
 
 `fermion --help` and `fermion <command> --help` are the authoritative flag
-listings for your installed version.
+listings for your installed version. On a machine without a GPU the same
+speech commands run on the CPU; [docs/cpu.md](cpu.md) carries the platform
+detail, speed and memory figures.
 
 ---
 

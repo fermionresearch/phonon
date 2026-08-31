@@ -42,8 +42,9 @@ pip install mlx mlx-audio mlx-lm soundfile scipy zstandard
 
 ## Run it
 
-Phonon runs on Apple silicon through MLX and on NVIDIA GPUs through the
-Docker image.
+Phonon runs on Apple silicon through MLX, on NVIDIA GPUs through the
+Docker image, and on ordinary CPUs — x86-64 Linux and Windows, and
+Apple silicon — through the CPU runtime ([docs/cpu.md](docs/cpu.md)).
 
 ```bash
 fermion transcribe recording.wav   # transcribe a file
@@ -70,6 +71,7 @@ The NVIDIA CUDA runtime lives in [cuda/](cuda/).
 - [docs/install.md](docs/install.md): installation on every platform.
 - [docs/troubleshooting.md](docs/troubleshooting.md): fixes for common problems.
 - [docs/cuda.md](docs/cuda.md): the NVIDIA CUDA runtime and Docker image.
+- [docs/cpu.md](docs/cpu.md): running on CPUs, no GPU required.
 
 ## License
 
