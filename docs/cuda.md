@@ -8,9 +8,9 @@ word-identical across backends (floating-point reduction order differs
 between Metal and CUDA).
 
 Two forms: a bare single-utterance script, and a Docker image whose `0.2.0`
-release — rolling out now — adds long-audio transcription, live streaming
-over WebSocket, and bounded request queueing (the `0.2.0` tag,
-available today, is single-utterance transcribe + serve).
+release adds long-audio transcription, live streaming over WebSocket, and
+bounded request queueing (the earlier `0.1.0-preview` tag is
+single-utterance transcribe + serve).
 
 ## Bare script
 
@@ -45,7 +45,7 @@ documented in [docs/server.md](server.md) (`serve --host 0.0.0.0 --port 8000
 optional `PHONON_CUDA_PACKED=1` kernel path is experimental and not
 transcript-gated; leave it off for anything that matters.
 
-From image `0.2.0` (rolling out now) the container also transcribes long
+From image `0.2.0` the container also transcribes long
 recordings (energy-gated segmentation mirroring the Mac engine's constants,
 finals joined with single spaces), serves the `/v1/audio/stream` WebSocket
 with the identical protocol to the Mac server — one client works against

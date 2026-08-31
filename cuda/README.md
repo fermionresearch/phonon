@@ -8,7 +8,7 @@ narrow; the supported paths remain the Mac runtime in the repository root.
 
 `transcribe_cuda.py` loads the **parity build** — the published
 [Phonon-1-Big](https://huggingface.co/FermionResearch/Phonon-1-Big) artifact,
-unchanged — and decodes it end-to-end on CUDA. The five-state packed decoder
+unchanged — and decodes it end-to-end on CUDA. The packed decoder
 weights are expanded from the published artifact at load time by the same
 derivation the Mac runtime uses (`phonon_cuda_artifact.py`, verified
 byte-identical to the MLX derivation on every decoder shape); the projections
@@ -49,14 +49,13 @@ Current limits:
 
 This bare script deliberately stays single-utterance (≤ 30 s). The Docker
 image ([docker/README.md](../docker/README.md)) is where the serving
-capabilities live: its `0.2.0` release — rolling out now — adds long-audio
+capabilities live: its `0.2.0` release adds long-audio
 transcription (energy-gated segmentation mirroring the Mac engine), live
 streaming over the same `/v1/audio/stream` WebSocket protocol as the Mac
 server, and bounded request queueing for concurrent clients, all on the same
-gated dense decode path.
+dense decode path.
 
 ## What follows
 
 The smaller builds (Phonon-1 / Phonon-1-Micro store a pre-quantized audio
-tower this loader does not yet mount) are follow-up work, gated the same way
-this was.
+tower this loader does not yet mount) are follow-up work.

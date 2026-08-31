@@ -14,15 +14,15 @@ Container Toolkit.
 
 ## Versions
 
-- **`0.2.0`** — rolling out now: long-audio transcription (files over 30 s
+- **`0.2.0`** — the current release: long-audio transcription (files over 30 s
   are segmented and stitched), live streaming over WebSocket
   (`/v1/audio/stream`, the same protocol as the Mac server), and bounded
   request queueing for concurrent clients. Each capability below is marked
   with the version it belongs to.
-- **`0.1.0-preview`** — available today: single utterances up to 30 s,
+- **`0.1.0-preview`** — the first release: single utterances up to 30 s,
   `transcribe` + `serve` with `POST /v1/audio/transcriptions`.
 
-`latest` tracks the newest gated tag.
+`latest` tracks the newest release.
 
 ## Transcribe files
 
@@ -40,7 +40,7 @@ Input envelope: English, 16 kHz audio (mono or stereo). In `0.1.0-preview`,
 single utterances up to 30 seconds; from `0.2.0`, longer recordings are
 handled by energy-gated segmentation — the same segmentation constants the
 Mac engine uses (a segment closes after ~0.7 s below the adaptive gate, or
-at a 30 s cap) — with each segment decoded by the gated configuration and
+at a 30 s cap) — with each segment decoded by the published configuration and
 the finals joined with single spaces. Anything outside the envelope is
 refused with an actionable message — no unvalidated fallback paths.
 
@@ -104,10 +104,10 @@ so a load balancer can steer on it.
   keys are process-lifetime, not persisted.
 - **Queue/503 contract.** Steer new traffic away when `/health` queue depth
   approaches `--max-queue`; on 503, honor `Retry-After`.
-- **Throughput expectation, measured not promised:** the gated dense path
-  measured ~6x realtime at batch 1 on an A100-40GB across the full 5,559-
-  utterance LibriSpeech test set (p50 0.96 s per ~7 s utterance). Size
-  fleets from your own audio mix.
+- **Throughput, measured:** at batch 1 on an A100-40GB across the full
+  5,559-utterance LibriSpeech test set, the default dense path decoded a
+  typical ~7 s utterance in 0.96 s at the median. Size fleets from your
+  own audio mix.
 - **Graceful shutdown (`0.2.0`).** SIGTERM stops accepting new requests,
   drains in-flight work, then exits — safe behind rolling deploys.
 - Request logging goes to stderr and never includes audio contents.

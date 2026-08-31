@@ -3,7 +3,7 @@
 Phonon-1, Phonon-1 Big and Phonon-1 Micro transcribe speech on ordinary
 CPUs — no GPU required. Supported machines: x86-64 Linux and Windows
 (AVX2, which is any mainstream CPU from roughly 2014 on) and Apple
-silicon Macs. The models are the same published artifacts the other
+silicon Macs. The models are the same published archives the other
 runtimes use (415 MB, 581 MB and 285 MB downloads), decoded with the same
 configuration behind the published accuracy numbers (greedy decode,
 temperature 0.0, max 512 tokens).
@@ -62,8 +62,8 @@ with the same API-key and queue behaviour, so clients written against
 either work unmodified against both. Without `--model-dir` the model is
 downloaded from Hugging Face; `-v /path/to/model:/model … --model-dir
 /model` runs fully offline. On Windows, run the container with Docker
-Desktop; no GPU is required for the CPU image. Full container
-documentation: [docker-cpu/README.md](../docker-cpu/README.md).
+Desktop; no GPU is required for the CPU image. The container sources live in
+[docker-cpu/](../docker-cpu/).
 
 ## Verify an install
 

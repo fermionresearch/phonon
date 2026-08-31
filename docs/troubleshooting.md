@@ -3,21 +3,21 @@
 Speech commands are designed to fail with one plain message and exit code 1,
 never a traceback. This page lists the messages you may see and what to do.
 
-## "Phonon runs on Apple silicon (arm64 macOS) only"
+## "the CPU speech engine runs on x86-64 Linux, x86-64 Windows and Apple silicon"
 
 Full message (from `fermion transcribe` on an unsupported machine):
 
 ```
-`fermion transcribe` is unavailable: Phonon runs on Apple silicon (arm64
-macOS) only — this is <OS>/<arch>. The speech model decodes through MLX,
-which is Apple-silicon-only; there is no CUDA or x86 build. The language
-models (`fermion chat`, `fermion generate`, `fermion serve`) run here
-normally.
+`fermion transcribe` is unavailable: the CPU speech engine runs on x86-64
+Linux, x86-64 Windows and Apple silicon — this is <OS>/<arch>.
 ```
 
-There is nothing to fix on this machine: the speech model decodes through
-MLX, which only exists on Apple silicon. The Neutrino commands still work.
-For NVIDIA GPUs there is a separate experimental preview; see
+Phonon runs on Apple silicon Macs (through MLX by default, or the CPU
+engine), and on x86-64 Linux and Windows through the CPU engine
+([docs/cpu.md](cpu.md)). Machines outside that list — Intel Macs, ARM
+Windows, ARM Linux — are refused with the one-line message above. The
+Neutrino commands (`fermion chat`, `fermion generate`, `fermion serve`
+with a language model) still work there. For NVIDIA GPUs, see
 [docs/cuda.md](cuda.md).
 
 ## "the speech runtime needs mlx, …, which are not installed"
@@ -32,7 +32,11 @@ resolve them. Install them with:
 
 Run the printed line in the same Python environment the `fermion` command
 lives in (check with `which fermion` and `pip -V`). The probe checks for
-`mlx`, `mlx_audio`, `mlx_lm`, `soundfile` and `scipy`.
+`mlx`, `mlx_audio`, `mlx_lm`, `soundfile` and `scipy`. A Mac that has the
+CPU runtime installed (`torch`, `safetensors`, `soundfile`, `scipy`,
+`zstandard`) but not the MLX stack falls back to the CPU engine with a
+one-line note on stderr; the install line above restores the
+Apple-silicon default.
 
 ## "live microphone capture needs sounddevice"
 
@@ -185,6 +189,5 @@ ffmpeg -i in.m4a -ar 16000 -ac 1 out.wav
 
 GitHub: <https://github.com/fermionresearch> (the repository's issue
 tracker). Include the full stderr of the failing command, `fermion
---version`, `python -V` and your macOS/chip (`uname -m` should print
-`arm64`). For server issues, include the startup banner and the response of
+--version`, `python -V`, and your operating system and architecture. For server issues, include the startup banner and the response of
 `GET /health`.

@@ -151,7 +151,7 @@ monitoring works without credentials). A speech server answers:
   "status": "ok",
   "model": "FermionResearch/Phonon-1",
   "kind": "speech",
-  "version": "0.1.17",
+  "version": "0.1.21",
   "repo": "FermionResearch/Phonon-1",
   "profile": "audio6",
   "sha256": "…",
@@ -313,7 +313,7 @@ stt.example.com {
 
 The NVIDIA Docker image (`ghcr.io/fermionresearch/phonon-cuda`, see
 [docker/README.md](../docker/README.md)) serves this same API from image
-`0.2.0`, which is rolling out now: `POST /v1/audio/transcriptions` with the
+`0.2.0`: `POST /v1/audio/transcriptions` with the
 same multipart shape and error envelope, and `GET /v1/audio/stream` with the
 **identical WebSocket protocol** — same config frame, same
 `partial`/`final`/`done`/`error` events and cadence, same
