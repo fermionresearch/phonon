@@ -55,7 +55,7 @@ larger GPU build. On Windows the plain torch wheel already is the CPU
 build; a clean machine may also need Microsoft's `vc_redist.x64.exe` (the
 fix when `import torch` fails with WinError 126). If anything is missing,
 the command prints the exact install line for this platform and exits.
-Speed, memory and container details are in [docs/cpu.md](cpu.md); both
+Container details and CPU usage are in [docs/cpu.md](cpu.md); both
 Docker images also run under Docker Desktop on Windows, and the CPU image
 needs no GPU.
 

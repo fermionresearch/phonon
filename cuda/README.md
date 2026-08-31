@@ -16,7 +16,7 @@ then run as dense BF16 reconstructed from those codes.
 
 ## Verified
 
-On an A100, against the banked Mac reference for the same checkpoint, same
+On an A100, against the published Mac reference for the same checkpoint, same
 utterances, same greedy decode: **the full LibriSpeech test set — all 5,559
 utterances (test-clean + test-other) — scores 4.12% WER on CUDA vs 4.19% on
 the Mac reference** (2.65/5.60 vs 2.67/5.72 by split), scored identically
