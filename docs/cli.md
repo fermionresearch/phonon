@@ -1,7 +1,7 @@
 # CLI reference
 
 The `fermion` command ships in the `fermion-research` pip package
-(version 0.1.21 at the time of writing). One CLI runs two model families:
+(version 0.1.23 at the time of writing). One CLI runs two model families:
 **Phonon** (speech recognition, Apple silicon and x86-64 CPUs) and **Neutrino** (language
 models, all platforms). This page covers the speech commands in full and the
 Neutrino commands in brief.
@@ -40,8 +40,8 @@ usage: fermion transcribe [-h] [--model MODEL] [--json] [--verbose]
 |---|---|
 | `audio` | Path to an audio file. Anything libsndfile reads: wav, flac, ogg, aiff. Any sample rate and channel count (resampled to 16 kHz mono internally). mp3/m4a are not read; convert first: `ffmpeg -i in.m4a -ar 16000 -ac 1 out.wav`. |
 | `--model MODEL` | Speech model repo id, alias, or a local unpacked model directory. Default: `FermionResearch/Phonon-1`. See [Model selection](#model-selection). |
-| `--json` | Emit a JSON object instead of bare text. |
-| `--verbose` | Print the decode configuration and timings to stderr. |
+| `--json` | Emit a JSON object instead of bare text: text, timings, per-segment timestamps, `truncated` flag. |
+| `--verbose` | Print the decode configuration and timings to stderr (decode-only and wall-clock, separately, plus the segment count). |
 | `--download-only` | Fetch and verify the model, print its local directory, then stop without decoding. |
 
 ### stdout/stdin discipline
@@ -61,8 +61,20 @@ Audio is read from a file path, not from stdin. There is no `-` argument.
 
 ```json
 {"text": "...", "model": "FermionResearch/Phonon-1", "profile": "audio6",
- "backend": "audio6", "duration_seconds": 4.2, "decode_seconds": 0.31}
+ "backend": "audio6", "engine": "mlx",
+ "duration_seconds": 4.2, "decode_seconds": 0.31, "wall_seconds": 2.4,
+ "segment_count": 1,
+ "segments": [{"id": 0, "start": 0.0, "end": 4.2, "text": "..."}],
+ "truncated": false}
 ```
+
+`decode_seconds` is the decode alone; `wall_seconds` is the whole command
+from model resolution to output, including the model load. Audio up to 35 s
+is one segment. Longer files are decoded in 25-35 s windows cut at pauses,
+one `segments` entry each (start and end in seconds), and the window
+transcripts are joined with single spaces in `text`. `truncated` is true if
+any window used its whole token budget, which means part of that window's
+audio may be missing from the transcript.
 
 ### Determinism
 

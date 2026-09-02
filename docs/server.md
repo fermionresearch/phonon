@@ -48,8 +48,10 @@ transcription is deterministic, and word/segment timestamps are not
 returned).
 
 Request bodies are capped at 32 MB, and chunked transfer encoding is not
-supported. Long recordings should be split; the model is designed for
-utterances up to 30 s and decodes long audio in chunks.
+supported. Audio longer than 35 s is decoded in 25-35 s windows cut at
+pauses (one `segments` entry each in `verbose_json`); the 32 MB body cap
+holds about 17 minutes of 16 kHz 16-bit mono wav, so split anything longer
+than that before uploading.
 
 ### Responses
 
@@ -151,7 +153,7 @@ monitoring works without credentials). A speech server answers:
   "status": "ok",
   "model": "FermionResearch/Phonon-1",
   "kind": "speech",
-  "version": "0.1.21",
+  "version": "0.1.23",
   "repo": "FermionResearch/Phonon-1",
   "profile": "audio6",
   "sha256": "…",
