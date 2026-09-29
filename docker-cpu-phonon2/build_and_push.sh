@@ -2,7 +2,7 @@
 # Build the Phonon-2 CUDA image (this directory), tag the version below + latest, and push to ghcr.io/fermionresearch/phonon-cuda.
 # Refuses to push without FOUNDER_WORD=push.
 set -euo pipefail; cd "$(dirname "$0")"
-IMG=ghcr.io/fermionresearch/phonon-cuda; VER=1.0.2
+IMG=ghcr.io/fermionresearch/phonon-cpu; VER=2.0.1
 docker build -t $IMG:$VER -t $IMG:latest .
 docker image inspect $IMG:$VER --format 'built {{.Id}} size {{.Size}}'
 if [ "${FOUNDER_WORD:-}" != "push" ]; then echo "built and tagged; NOT pushed (FOUNDER_WORD=push to push)"; exit 0; fi

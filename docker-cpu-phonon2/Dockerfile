@@ -11,11 +11,12 @@ RUN apt-get update -q && apt-get install -y -q --no-install-recommends libsndfil
     && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir "transformers==5.17.0" "numpy<3" soundfile scipy zstandard safetensors huggingface_hub
 
-# the staged fermion tree (0.2.0 with patches 0006b + 0007 applied, binaries + SHA256SUMS in _engine_phonon2_cpu/)
+# the staged fermion tree (0.2.0 with patches 0006b + 0007b.2 applied, binaries + SHA256SUMS in _engine_phonon2_cpu/)
 COPY pip_tree /opt/fermion_src
 RUN pip install --no-cache-dir /opt/fermion_src && rm -rf /opt/fermion_src
 
-RUN useradd --create-home --uid 1001 phonon
+COPY entrypoint.sh /usr/local/bin/phonon-entrypoint
+RUN chmod 755 /usr/local/bin/phonon-entrypoint && useradd --create-home --uid 1001 phonon
 ENV FERMION_DEVICE=cpu \
     HF_HOME=/home/phonon/.cache/huggingface \
     OMP_WAIT_POLICY=PASSIVE \
@@ -25,5 +26,5 @@ WORKDIR /home/phonon
 
 # `docker run --rm -v $PWD:/audio ghcr.io/fermionresearch/phonon-cpu transcribe /audio/clip.wav --model phonon-2`
 # `docker run --rm -p 127.0.0.1:8000:8000 ghcr.io/fermionresearch/phonon-cpu serve --host 0.0.0.0 --model phonon-2 --api-key ...`
-ENTRYPOINT ["fermion"]
+ENTRYPOINT ["/usr/local/bin/phonon-entrypoint"]
 CMD ["--help"]
