@@ -19,7 +19,7 @@ bits each.
 It transcribes an hour of audio in about 20 seconds on an M5 MacBook Air (174x realtime), at 143x on eight Zen 5 cores
 (16 vCPU) and at 6,680x on one H100 in batches of 128.
 
-It keeps up to 100.8 % of its teacher's word accuracy on every set.
+It keeps up to 100.8 % of its teacher's word accuracy across the seven sets.
 
 | Model | Download | LS clean | LS other | AMI | Earnings-22 | GigaSpeech | SPGISpeech | VoxPopuli | Average |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
