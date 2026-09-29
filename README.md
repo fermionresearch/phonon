@@ -16,8 +16,8 @@ Phonon-2 is an open speech recognition model for English in a 164 MB download. I
 Open ASR Leaderboard's seven public test sets. Its encoder holds every weight at one of five learned levels, under 2
 bits each.
 
-It transcribes an hour of audio in about 20 seconds on an M5 MacBook Air (174x realtime), at 143x on eight AMD Zen 5
-cores and at 6,680x on one H100 in batches of 128.
+It transcribes an hour of audio in about 20 seconds on an M5 MacBook Air (174x realtime), at 143x on eight Zen 5 cores
+(16 vCPU) and at 6,680x on one H100 in batches of 128.
 
 ```bash
 pip install fermion-research
