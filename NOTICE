@@ -1,0 +1,48 @@
+Phonon
+Copyright 2026 Fermion Research
+
+This product includes software and models developed by Fermion Research.
+The Phonon engine and command line are licensed under the Apache License,
+Version 2.0 (see LICENSE).
+
+================================================================================
+BASE MODELS
+================================================================================
+
+Phonon-2 is derived from NVIDIA's Parakeet TDT 0.6B v3
+(nvidia/parakeet-tdt-0.6b-v3), (c) NVIDIA Corporation, licensed under the
+Creative Commons Attribution 4.0 International licence (CC-BY-4.0).
+
+    https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
+    https://creativecommons.org/licenses/by/4.0/
+
+The Phonon-2 weights are distributed under CC-BY-4.0; their changes are listed
+in the NOTICE file of the weights repository:
+
+    https://huggingface.co/FermionResearch/Phonon-2/blob/main/NOTICE
+
+The Phonon-1 family (Phonon-1, Phonon-1 Big, Phonon-1 Micro) is derived from
+Qwen/Qwen3-ASR-0.6B, licensed under the Apache License, Version 2.0.
+
+    https://huggingface.co/Qwen/Qwen3-ASR-0.6B
+    https://www.apache.org/licenses/LICENSE-2.0
+
+The audio encoder architecture, tokenizer (vocab.json, merges.txt,
+tokenizer_config.json), chat template, generation config and preprocessor
+config of the Phonon-1 family derive from that model and remain under
+Apache-2.0.
+
+================================================================================
+RUNTIME DEPENDENCIES
+================================================================================
+
+MLX ......................... MIT License ......... https://github.com/ml-explore/mlx
+mlx-audio ................... MIT License ......... https://github.com/Blaizzy/mlx-audio
+PyTorch ..................... BSD-3-Clause ........ https://pytorch.org
+transformers ................ Apache-2.0 .......... https://github.com/huggingface/transformers
+NumPy ....................... BSD-3-Clause ........ https://numpy.org
+SciPy ....................... BSD-3-Clause ........ https://scipy.org
+sounddevice ................. MIT License ......... https://github.com/spatialaudio/python-sounddevice
+soundfile ................... BSD-3-Clause ........ https://github.com/bastibe/python-soundfile
+    soundfile links libsndfile (LGPL-2.1), dynamically and unmodified, as
+    distributed in the standard soundfile wheel.

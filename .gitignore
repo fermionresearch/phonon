@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Model artifacts are downloaded, never committed.
+*.tar.zst
+*.safetensors
+
+# Release binaries are attached to GitHub Releases, never to the git tree.
+*.dmg

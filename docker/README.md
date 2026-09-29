@@ -1,0 +1,127 @@
+# Phonon-1 CUDA Docker image
+
+This is the Phonon-1 family image, tag `0.3.0`. The current CUDA image,
+`ghcr.io/fermionresearch/phonon-cuda:1.0.8` (also `latest`), runs Phonon-2 and is documented in
+[docs/cuda.md](../docs/cuda.md); the run lines below do not apply to it.
+
+Runs [Phonon-1](https://huggingface.co/FermionResearch/Phonon-1),
+[Phonon-1 Big](https://huggingface.co/FermionResearch/Phonon-1-Big) (the
+default) and
+[Phonon-1 Micro](https://huggingface.co/FermionResearch/Phonon-1-Micro) on
+NVIDIA GPUs. The image's default execution path is **dense-from-fold4**:
+standard Torch matmuls over dense weights built at load time from the
+published artifact (greedy decode, temperature 0.0, max 512 tokens, no
+repetition penalty).
+
+Requires an NVIDIA GPU (Ampere or newer recommended) and the NVIDIA
+Container Toolkit.
+
+## Models
+
+`--model` selects `phonon-1-big` (the default), `phonon-1`, or
+`phonon-1-micro`. The server's `model` form field names one of the three
+published models (`phonon` is accepted on any server); a server running
+Phonon-1 Big answers to `phonon-1-big`, not `phonon-1`, which names the
+flagship model.
+
+`latest` tracks the newest release.
+
+## Transcribe files
+
+```sh
+docker run --rm --gpus all \
+  -v /path/to/Phonon-1-Big:/model -v /path/to/audio:/audio \
+  ghcr.io/fermionresearch/phonon-cuda:latest \
+  transcribe /audio/recording.wav --model-dir /model
+```
+
+`--model phonon-1` and `--model phonon-1-micro` select the other published
+models. Without `--model-dir` the requested model's release archive is
+downloaded from Hugging Face, verified against its published SHA-256 pin,
+and unpacked (`phonon-1-big` is the default).
+
+Input envelope: English, 16 kHz audio (mono or stereo). Recordings up to
+30 seconds decode in one pass; longer recordings are handled by
+energy-gated segmentation (a segment closes after ~0.7 s below the adaptive
+gate, or at a 30 s cap), with each segment decoded by the same configuration
+and the finals joined with single spaces. Anything outside the envelope is
+refused with an actionable message.
+
+## Serve (OpenAI-compatible)
+
+```sh
+docker run --rm --gpus all -p 127.0.0.1:8000:8000 \
+  -v /path/to/Phonon-1-Big:/model \
+  ghcr.io/fermionresearch/phonon-cuda:latest \
+  serve --host 0.0.0.0 --port 8000 --api-key change-me --model-dir /model
+```
+
+```sh
+curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
+  -H "Authorization: Bearer change-me" \
+  -F file=@recording.wav -F model=phonon-1-big
+```
+
+`POST /v1/audio/transcriptions` takes the Whisper API multipart shape
+(`file`, optional `model`, `response_format` = json | text | verbose_json),
+so `openai` client libraries work unmodified with
+`base_url=http://127.0.0.1:8000/v1`. `GET /health` reports the exact decode
+configuration in force. Binding a non-loopback host requires `--api-key`
+(or `PHONON_API_KEY`); the server refuses to start otherwise.
+
+### Streaming
+
+`GET /v1/audio/stream` is a standard RFC 6455 WebSocket speaking the exact
+protocol documented in [docs/server.md](../docs/server.md): send one JSON
+config frame, then binary PCM frames; receive `partial` / `final` / `done`
+JSON events (first partial after ~0.35 s of speech, then roughly one per
+0.5 s of audio; segments finalize after ~0.7 s of silence or at the 30 s
+cap). Auth accepts `Authorization: Bearer` or `?api_key=` (the query form
+exists because the browser `WebSocket()` constructor cannot set headers).
+One live stream per GPU worker; a second concurrent stream is refused
+immediately with close code 1013 rather than queued behind a session that
+may run for minutes. A client written against `fermion serve` in the pip
+package works unmodified against the container.
+
+### Concurrency and the queue contract
+
+One GPU worker decodes one request at a time. Concurrent HTTP requests wait
+in a bounded queue (`--max-queue`, default 8). When the queue is full the
+server answers **503 with a `Retry-After` header** — it never hangs
+silently. `GET /health` reports live queue depth, uptime, and the model id,
+so a load balancer can steer on it.
+
+## Enterprise deployment
+
+- **One GPU = one worker.** The model is held by a single process that owns
+  the GPU; scale horizontally by running one container per GPU behind a load
+  balancer, as [docs/server.md](../docs/server.md) describes. Health-check on
+  `GET /health` (unauthenticated by design).
+- **TLS via reverse proxy.** The container speaks plain HTTP; put nginx or
+  Caddy in front for TLS, timeouts, and access control (config examples in
+  [docs/server.md](../docs/server.md)). Keep `--api-key` set as well: TLS
+  protects the transport, the key protects the endpoint.
+- **API keys.** `--api-key` / `PHONON_API_KEY` requires
+  `Authorization: Bearer` on every `/v1/*` route (constant-time compare);
+  `/health` stays open for monitoring. Rotate by restarting the container —
+  keys are process-lifetime, not persisted.
+- **Queue/503 contract.** Steer new traffic away when `/health` queue depth
+  approaches `--max-queue`; on 503, honor `Retry-After`.
+- **Graceful shutdown.** SIGTERM stops accepting new requests,
+  drains in-flight work, then exits — safe behind rolling deploys.
+- Request logging goes to stderr and never includes audio contents.
+
+## PHONON_CUDA_PACKED=1
+
+Setting `PHONON_CUDA_PACKED=1` opts into the packed CUDA kernel
+(`/opt/phonon/bin/libphonon_fold4_cuda.so`, binary only; sm_80/86/89/90) for
+single-token decode. The default dense path is used when it is unset.
+
+## What is in the image
+
+The Phonon runtime adapters (`phonon_cuda_model.py`,
+`phonon_cuda_artifact.py`, `phonon_cuda_hybrid.py`,
+`phonon_cuda_runtime.py`, `_archive.py`), the CLI/server
+entrypoint, stdlib multipart and WebSocket modules, and the compiled kernel
+binary. No kernel source ships in this image. Model weights are not baked
+in — mount them or let the entrypoint download them.
