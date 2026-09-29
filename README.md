@@ -1,9 +1,12 @@
-# Phonon-1
+# Phonon
+
+Open speech recognition models for English from Fermion Research: **Phonon-2** (164 MB,
+the current model — see its section below) and the **Phonon-1** family.
 
 Phonon-1 is an open speech recognition model for English. It downloads in
 415 MB, runs on a laptop or a datacenter GPU, and transcribes an hour of audio
 in about two and a half minutes. It was trained at 2.4 bits per weight from
-the start, and it is the second model in the lab's low-bit lane after
+the start, and it is the second low-bit model after
 Neutrino-1.
 
 Models: [Phonon-1](https://huggingface.co/FermionResearch/Phonon-1) ·
@@ -112,4 +115,4 @@ The NVIDIA CUDA runtime lives in [cuda/](cuda/).
 
 ## License
 
-**Apache License 2.0** for the weights and the [command line](https://pypi.org/project/fermion-research/). See [LICENSE](LICENSE) and [NOTICE](NOTICE). Base model: [`Qwen/Qwen3-ASR-0.6B`](https://huggingface.co/Qwen/Qwen3-ASR-0.6B), Apache-2.0.
+**Phonon-2 weights: CC-BY-4.0** (a derivative of NVIDIA's parakeet-tdt-0.6b-v3; the weights repository's `NOTICE` lists the changes). **Phonon-1 family weights and the [command line](https://pypi.org/project/fermion-research/): Apache License 2.0.** See [LICENSE](LICENSE) and [NOTICE](NOTICE). Base model: [`Qwen/Qwen3-ASR-0.6B`](https://huggingface.co/Qwen/Qwen3-ASR-0.6B), Apache-2.0.

@@ -37,7 +37,7 @@ from typing import Iterable, List, Sequence
 
 # Everything the restorers are allowed to add or change.  Apostrophes are kept
 # on purpose: V18 already emits them ("beggar's"), so silently dropping one
-# would be a word change the founder can see.
+# would be a word change the user can see.
 _STRIP_CHARS = ".,?!;:—–-…\"“”‘’()[]{}<>/\\*_"
 _STRIP_KEEP_APOS = str.maketrans({c: " " for c in _STRIP_CHARS})
 _STRIP_WITH_APOS = str.maketrans({c: " " for c in _STRIP_CHARS + "'"})

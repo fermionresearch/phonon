@@ -49,7 +49,7 @@ from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-VERSION = "1.0.0"
+VERSION = "1.0.3"
 BRAND = "phonon-cuda"
 
 #: The published models this image serves. Release facts (archive filename,
@@ -61,8 +61,8 @@ CATALOG = {
         "repo": "FermionResearch/Phonon-2",
         "profile": "five-value",
         "filename": "phonon-2.bps.tar.zst",
-        "sha256": "2cd570aff637a18fe82d4ce675ea7bf28c920e1e2920dafc6dee33e4aa0a5508",
-        "download_bytes": 163_516_338,
+        "sha256": "98125795b6dda72f5c6eee9ba33d19815df65dcb18b50a357bf9f73c9935309e",
+        "download_bytes": 163_515_201,
         "aliases": ("phonon-2", "phonon2", "phonon"),
     },
 }

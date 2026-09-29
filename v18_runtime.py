@@ -19,7 +19,7 @@ from mlx_audio.utils import load_weights
 
 from quint5_codec import packed_bytes_per_row, unpack_ten_base5_per_24bit
 
-# NOTE (public release build): the internal tree also carries
+# NOTE (public release build): the source tree also carries
 # ``fused_trit_kernel`` (an experimental fused two-plane QMV Metal kernel, never
 # a default and superseded by MLX's own native path) and ``trit3_codec`` (a
 # superseded 3-bit storage format).  Neither is required by any shipping

@@ -153,7 +153,7 @@ monitoring works without credentials). A speech server answers:
   "status": "ok",
   "model": "FermionResearch/Phonon-1",
   "kind": "speech",
-  "version": "0.1.23",
+  "version": "0.2.2",
   "repo": "FermionResearch/Phonon-1",
   "profile": "audio6",
   "sha256": "…",

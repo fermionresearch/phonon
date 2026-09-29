@@ -1,7 +1,7 @@
 # CLI reference
 
 The `fermion` command ships in the `fermion-research` pip package
-(version 0.1.23 at the time of writing). One CLI runs two model families:
+(version 0.2.2 at the time of writing). One CLI runs two model families:
 **Phonon** (speech recognition, Apple silicon and x86-64 CPUs) and **Neutrino** (language
 models, all platforms). This page covers the speech commands in full and the
 Neutrino commands in brief.

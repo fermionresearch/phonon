@@ -29,6 +29,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Phonon-1 family image: versioned tag only. `:latest` belongs to the current Phonon-2 image (docker-phonon2/,
+      # docker-cpu-phonon2/) and is moved by hand after its smoke passes.
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -38,7 +40,6 @@ jobs:
           provenance: false
           tags: |
             ghcr.io/fermionresearch/phonon-cuda:0.3.0
-            ghcr.io/fermionresearch/phonon-cuda:latest
 
       - name: Report digest
         run: docker buildx imagetools inspect ghcr.io/fermionresearch/phonon-cuda:0.3.0

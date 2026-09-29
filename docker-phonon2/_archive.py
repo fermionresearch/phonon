@@ -144,9 +144,10 @@ def ensure_model(repo: str, filename: str, sha256: str, nbytes: int,
     got_bytes = archive.stat().st_size
     if got_sha != sha256 or got_bytes != nbytes:
         raise RuntimeError(
-            f"{repo}/{filename} does not match its release pin "
-            f"(sha {got_sha[:16]}…, {got_bytes} bytes) — refusing to unpack. "
-            f"Update this image if a new release has shipped.")
+            f"{repo}/{filename} does not match this image's release pin: downloaded sha256 {got_sha[:16]}… "
+            f"({got_bytes} bytes), image expects {sha256[:16]}… ({nbytes} bytes) — refusing to unpack. "
+            f"If the Hub file is a newer release, update the image (docker pull ...:latest); if it is the same "
+            f"release, the download is damaged — delete the Hub cache under $HF_HOME and retry.")
     log(f"archive verified (sha256 {got_sha[:16]}…); unpacking ...")
 
     partial = dest.with_name(dest.name + ".partial")

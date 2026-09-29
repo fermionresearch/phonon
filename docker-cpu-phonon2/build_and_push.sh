@@ -1,10 +1,11 @@
 #!/bin/bash
-# Build the Phonon-2 CUDA image (this directory), tag the version below + latest, and push to ghcr.io/fermionresearch/phonon-cuda.
-# Refuses to push without FOUNDER_WORD=push.
+# Build the Phonon-2 CPU image (this directory) for the host architecture and tag it; push with `--push`.
+# The published image is a linux/amd64 + linux/arm64 manifest list assembled from two native builds.
 set -euo pipefail; cd "$(dirname "$0")"
-IMG=ghcr.io/fermionresearch/phonon-cpu; VER=2.0.1
-docker build -t $IMG:$VER -t $IMG:latest .
-docker image inspect $IMG:$VER --format 'built {{.Id}} size {{.Size}}'
-if [ "${FOUNDER_WORD:-}" != "push" ]; then echo "built and tagged; NOT pushed (FOUNDER_WORD=push to push)"; exit 0; fi
-echo "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USER:-fermionresearch}" --password-stdin
-docker push $IMG:$VER && docker push $IMG:latest && echo "pushed $IMG:$VER + latest"
+IMG=ghcr.io/fermionresearch/phonon-cpu; VER=2.0.2; ARCH=$(uname -m); case $ARCH in x86_64) DA=amd64;; aarch64|arm64) DA=arm64;; *) echo "unsupported arch $ARCH"; exit 2;; esac
+docker build -t $IMG:$VER-$DA .
+docker image inspect $IMG:$VER-$DA --format 'built {{.Id}} size {{.Size}}'
+if [ "${1:-}" != "--push" ]; then echo "built and tagged $IMG:$VER-$DA; NOT pushed (pass --push)"; exit 0; fi
+docker push $IMG:$VER-$DA && echo "pushed $IMG:$VER-$DA"
+echo "then, once both architectures are pushed:"
+echo "  docker manifest create $IMG:$VER $IMG:$VER-amd64 $IMG:$VER-arm64 && docker manifest push $IMG:$VER"
