@@ -41,8 +41,8 @@ It transcribes an hour of audio in about 20 seconds on an M5 MacBook Air (174x r
 ```bash
 pip install fermion-research
 fermion transcribe recording.wav --model phonon-2      # Apple silicon (MLX), Linux, Windows: the CPU engine; NVIDIA GPUs: the CUDA image
-docker run --rm -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cpu:2.0.1 transcribe /audio/recording.wav --model phonon-2
-docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:1.0.2 transcribe /audio/recording.wav --model phonon-2
+docker run --rm -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cpu:2.0.2 transcribe /audio/recording.wav --model phonon-2
+docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:1.0.3 transcribe /audio/recording.wav --model phonon-2
 ```
 
 The weights are at [huggingface.co/FermionResearch/Phonon-2](https://huggingface.co/FermionResearch/Phonon-2). Based on
