@@ -12,14 +12,14 @@ Models: [Phonon-1](https://huggingface.co/FermionResearch/Phonon-1) ·
 
 ## Phonon-2
 
-Phonon-2 is an open speech recognition model for English in a 164 MB download. It averages 5.21 % word error on the
-Open ASR Leaderboard's seven public test sets. Its encoder holds every weight at one of five learned levels, under 2
-bits each.
+Phonon-2 is the most accurate open speech recognition model for English under 900 MB. Across the Open ASR Leaderboard's
+seven English sets it averages 5.21 % word error, and every open model that scores better is at least 5.8 times its size.
+Set for set it holds the accuracy of its 2.5 GB full-precision teacher, reaching 100.8 % of the teacher's word accuracy on
+parliamentary speech and beating it on meetings, from a download 15 times smaller. Its encoder holds each weight at one of
+five learned levels in under 2 bits.
 
 It transcribes an hour of audio in about 20 seconds on an M5 MacBook Air (174x realtime), at 143x on eight Zen 5 cores
 (16 vCPU) and at 6,680x on one H100 in batches of 128.
-
-It keeps up to 100.8 % of its teacher's word accuracy across the seven sets.
 
 | Model | Download | LS clean | LS other | AMI | Earnings-22 | GigaSpeech | SPGISpeech | VoxPopuli | Average |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
