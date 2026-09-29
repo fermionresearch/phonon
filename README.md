@@ -26,7 +26,9 @@ docker run --rm -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cpu:2.0.1 transc
 docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:1.0.2 transcribe /audio/recording.wav --model phonon-2
 ```
 
-The weights are at [huggingface.co/FermionResearch/Phonon-2](https://huggingface.co/FermionResearch/Phonon-2) (CC-BY-4.0). The
+The weights are at [huggingface.co/FermionResearch/Phonon-2](https://huggingface.co/FermionResearch/Phonon-2). Based on
+parakeet-tdt-0.6b-v3 by NVIDIA; the tokenizer and output conventions (punctuation, casing, numerals) are the original's.
+Licence CC-BY-4.0, same as the original; the weights repository's `NOTICE` lists the changes. The
 CUDA image is built from [docker-phonon2/](docker-phonon2/) and the CPU image from [docker-cpu-phonon2/](docker-cpu-phonon2/).
 
 ## Benchmarks
