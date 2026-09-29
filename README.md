@@ -10,6 +10,27 @@ Models: [Phonon-1](https://huggingface.co/FermionResearch/Phonon-1) ·
 [Phonon-1-Micro](https://huggingface.co/FermionResearch/Phonon-1-Micro) ·
 [Phonon-1-Big](https://huggingface.co/FermionResearch/Phonon-1-Big)
 
+## Phonon-2
+
+Phonon-2 is an open speech recognition model for English in a 164 MB download. It averages 5.21 % word error on the
+Open ASR Leaderboard's seven public test sets, and every more accurate model is at least 5.8 times larger.
+We trained it from NVIDIA's Parakeet TDT 0.6B v3 with quantisation-aware training, which holds each encoder weight to
+one of five learned levels in under 2 bits; it keeps at least 98.8 % of that model's word accuracy on every set.
+
+It transcribes an hour of audio in about 20 seconds on an M5 MacBook Air (174x realtime), at 143x on eight AMD Zen 5
+cores and at 6,680x on one NVIDIA H100 in batches of 128.
+
+```bash
+pip install fermion-research
+fermion transcribe recording.wav --model phonon-2      # Apple silicon (MLX), Linux, Windows: the CPU engine; NVIDIA GPUs: the CUDA image
+docker run --rm -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cpu:latest transcribe /audio/recording.wav --model phonon-2
+docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:latest transcribe /audio/recording.wav --model phonon-2
+```
+
+The weights are at [huggingface.co/FermionResearch/Phonon-2](https://huggingface.co/FermionResearch/Phonon-2) (CC-BY-4.0). The
+CUDA image is built from [docker-phonon2/](docker-phonon2/) and the CPU image from [docker-cpu-phonon2/](docker-cpu-phonon2/);
+`reference_transformers.py` in the weights repository loads the same file into a stock `transformers` ParakeetForTDT.
+
 ## Benchmarks
 
 | Dataset | Phonon-1 (415 MB) | Phonon-1 Micro (285 MB) | Parakeet-0.6B 4-bit (637 MB) | Moonshine base (248 MB) | Whisper large-v3-turbo (1,619 MB) | Whisper small (967 MB) | wav2vec2-large (1,262 MB) | Qwen3-ASR teacher (1,569 MB) |
