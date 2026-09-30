@@ -20,7 +20,7 @@ server answers the audio routes with a 404 pointing at
 
 ```bash
 fermion serve phonon
-fermion serve phonon --port 8080 --api-key "$(openssl rand -hex 24)"
+fermion serve phonon-2 --port 8080 --api-key "$(openssl rand -hex 24)"
 ```
 
 Startup notes print to stderr: the base URL, the served profile and decode
@@ -189,6 +189,45 @@ The standard OpenAI list shape with one entry, the served model id
   startup; without `--api-key` that exposes an unauthenticated model server
   beyond this machine. Set a key before you widen the bind, or better, keep
   the loopback bind and put a reverse proxy in front (below).
+
+## Unix socket and dictation tools
+
+`--unix-socket PATH` serves the same API on an owner-only Unix socket (macOS and Linux) instead of a TCP port, so no API key is needed for local clients:
+
+```bash
+fermion serve phonon-2 --unix-socket ~/.cache/fermion/phonon.sock
+curl --unix-socket ~/.cache/fermion/phonon.sock http://localhost/v1/audio/transcriptions -F file=@meeting.wav -F model=phonon-2
+```
+
+`--threads N` sets the CPU engine's thread count (default one per physical core from six cores up, every logical cpu on smaller parts, performance cores on Apple silicon).
+
+A dictation tool keeps one server running and sends each recording to it. Voxtype's remote backend, in its config file:
+
+```toml
+engine = "whisper"
+[whisper]
+backend = "remote"
+remote_endpoint = "http://127.0.0.1:8010"
+remote_model = "phonon-2"
+```
+
+To keep the server running at login on Linux, a systemd user unit (`~/.config/systemd/user/fermion-serve.service`):
+
+```ini
+[Unit]
+Description=Phonon speech server
+
+[Service]
+ExecStart=%h/.local/bin/fermion serve phonon-2 --port 8010
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+systemctl --user enable --now fermion-serve
+```
 
 ## One request at a time
 

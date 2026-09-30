@@ -30,15 +30,23 @@ fermion transcribe meeting.wav
 ```
 
 ```
-usage: fermion transcribe [-h] [--model MODEL] [--json] [--verbose]
-                          [--download-only]
-                          audio
+usage: fermion transcribe [-h] [--json] [--verbose] [--threads N]
+                          [--download-only] [--hotwords WORDS]
+                          [--hotword-strength LOGITS]
+                          [MODEL AUDIO ...]
+
+positional arguments:
+  MODEL AUDIO           the model (phonon-2, phonon-1, phonon-1-big,
+                        phonon-1-micro, a repo id or a local model directory)
+                        followed by the audio file (wav/flac/ogg/aiff);
+                        `fermion transcribe phonon-2 meeting.wav`
 ```
 
 | Argument | Meaning |
 |---|---|
 | `audio` | Path to an audio file. Anything libsndfile reads: wav, flac, ogg, aiff. Any sample rate and channel count (resampled to 16 kHz mono internally). mp3/m4a are not read; convert first: `ffmpeg -i in.m4a -ar 16000 -ac 1 out.wav`. |
-| `--model MODEL` | Speech model repo id, alias, or a local unpacked model directory. Required. See [Model selection](#model-selection). |
+| `MODEL` | First positional argument: `phonon-2`, `phonon-1`, `phonon-1-big`, `phonon-1-micro`, a repo id or a local model directory. Required. See [Model selection](#model-selection). |
+| `--threads N` | CPU engine threads (default one per physical core from six cores up, every logical cpu on smaller parts, performance cores on Apple silicon); same as `FERMION_CPU_THREADS`. |
 | `--json` | Emit a JSON object instead of bare text: text, timings, per-segment timestamps, `truncated` flag. |
 | `--verbose` | Print the decode configuration and timings to stderr (decode-only and wall-clock, separately, plus the segment count). |
 | `--download-only` | Fetch and verify the model, print its local directory, then stop without decoding. |
@@ -106,13 +114,20 @@ fermion listen --wav clip.wav  # the same live path, from a file
 ```
 
 ```
-usage: fermion listen [-h] [--wav FILE] [--model MODEL] [--verbose]
+usage: fermion listen [-h] [--wav FILE] [--verbose] [--hotwords WORDS]
+                      [--hotword-strength LOGITS]
+                      [MODEL]
+
+positional arguments:
+  MODEL                 the speech model: phonon-2, phonon-1, phonon-1-big,
+                        phonon-1-micro, a repo id or a local model directory;
+                        `fermion listen phonon-2`
 ```
 
 | Flag | Meaning |
 |---|---|
 | `--wav FILE` | Stream this audio file through the identical live code path, paced to real time, instead of capturing the microphone. The whole streaming stack (segmentation, partial cadence, final decode, rendering) runs headless; only microphone capture is skipped. |
-| `--model MODEL` | Same semantics as `transcribe --model`, byte for byte. |
+| `MODEL` | Same semantics as the first argument of `transcribe`, byte for byte. |
 | `--verbose` | Print the decode configuration and one timed stderr line per partial/final instead of the animated live display. |
 
 ### Output discipline
@@ -184,7 +199,7 @@ behind a single decode worker (one Metal command queue); a second request
 waits, it is not rejected. The WebSocket endpoint allows one live stream at
 a time.
 
-Flags that matter in speech mode: `--model`, `--host` (default `127.0.0.1`),
+Flags that matter in speech mode: `--host` (default `127.0.0.1`), `--unix-socket PATH` (owner-only socket in place of a port and key, macOS and Linux), `--threads N`,
 `--port` (default `8000`), `--api-key` (require this bearer token on `/v1/*`
 requests), `--cors`, `--served-model-name`. The LLM sampler and backend flags
 (`--temperature`, `--draft`, `--kv-dtype`, `--backend`, `--session-ctx`,
@@ -197,7 +212,7 @@ reverse-proxy guidance: [docs/server.md](server.md).
 
 ### LLM mode
 
-Started without `--model` (or with a Neutrino model or a local TRTC
+Started with a Neutrino model (or a local TRTC
 container), `serve` is an OpenAI-compatible language-model server:
 `POST /v1/chat/completions` (streaming and non-streaming, with tool calling),
 `POST /v1/completions`, `GET /v1/models`, `GET /health`. It defaults to the
@@ -229,8 +244,8 @@ fermion models --all    # also show profiles retained but never published
 
 ## Model selection
 
-Every speech verb takes `--model`, which accepts a repo id, a short alias, or
-a local directory holding an unpacked model. There is deliberately no
+Every speech verb takes the model as its first argument, a short alias, a repo id, or
+a local directory holding an unpacked model. Name the model. Phonon never guesses. There is deliberately no
 `--profile` flag: each model is its own repository, so the model is the
 profile.
 
@@ -242,12 +257,51 @@ profile.
 | `FermionResearch/Phonon-1-Micro` | `phonon-1-micro`, `phonon-micro`, `micro` | `micro` | 285 MB | 331 MB |
 
 - Aliases and repo ids are case-insensitive
-  (`--model fermionresearch/phonon-1` works).
+  (`fermion transcribe fermionresearch/phonon-1 clip.wav` works).
 - Every speech verb takes the model first, for example `fermion transcribe phonon-2 clip.wav`.
   A command without a model prints the model names and exits.
 - A local directory is accepted anywhere a repo id is:
-  `--model /path/to/model_phonon2_c4c_int6`. The directory must
+  `fermion transcribe /path/to/model_phonon2_c4c_int6 clip.wav`. The directory must
   hold `config.json` and `packed_manifest.json` side by side.
+
+### A command without a model
+
+Nothing is downloaded; the command prints the model list and exits 2:
+
+```
+fermion transcribe: name the model. Fermion never guesses.
+
+  fermion transcribe phonon-2 meeting.wav
+
+Models (alias, kind, repo):
+  phonon-2, phonon2, phonon          speech   FermionResearch/Phonon-2
+  phonon-1                           speech   FermionResearch/Phonon-1
+  phonon-1-big, phonon-big, big      speech   FermionResearch/Phonon-1-Big
+  phonon-1-micro, phonon-micro, micro speech   FermionResearch/Phonon-1-Micro
+  neutrino, neutrino-8b, 8b          language fermionresearch/Neutrino-8B
+  neutrino-0.6b, 0.6b, draft         language fermionresearch/Neutrino-0.6B
+  neutrino-0.6b-chat, 0.6b-chat      language fermionresearch/Neutrino-0.6B-Chat
+
+`fermion models` lists everything and marks what is already on this machine.
+[exit 2]
+```
+
+`--model MODEL` still works in this release and prints one note line saying the model now comes first.
+
+### The `phonon`, `phonon-2` and `phonon-1` commands
+
+Each is the `fermion` CLI with its model fixed:
+
+```
+phonon: the fermion CLI with the model fixed to phonon-2.
+
+  phonon transcribe meeting.wav
+  phonon listen
+  phonon serve [--port 8000] [--unix-socket PATH]
+  phonon bench --audio clip.wav
+
+Everything after the verb is passed to `fermion <verb> phonon-2`; `phonon <verb> -h` shows that verb's options.
+```
 
 ### What a fresh machine downloads, and where it lands
 

@@ -50,8 +50,9 @@ silicon, up to sixteen cores elsewhere. There is nothing to configure.
 ```sh
 docker run --rm \
   -v /path/to/audio:/audio \
-  ghcr.io/fermionresearch/phonon-cpu:2.0.2 \
-  transcribe /audio/recording.wav --model phonon-2
+  -v phonon-cache:/home/phonon/.cache \
+  ghcr.io/fermionresearch/phonon-cpu:2.0.3 \
+  transcribe phonon-2 /audio/recording.wav
 ```
 
 `serve` exposes the same OpenAI-compatible endpoints as the GPU image
