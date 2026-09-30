@@ -128,7 +128,7 @@ Three one-time costs stack on a fresh machine:
    dependency stack to bytecode and the GPU kernels, about twenty seconds
    once (measured 22 to 24 s on a base M5 with the model already
    downloaded); later invocations start fast. The engine's start-up line
-   says so on that first run: `decode backend: mlx · Phonon-1 · first run
+   says so on that first run: `decode backend: mlx · local model · first run
    in a new environment compiles shaders (~20 s), later runs are fast`.
 3. The first decode after a model loads pays the Metal graph compile,
    roughly four to five seconds. `fermion listen` pays this up front as an
@@ -137,8 +137,8 @@ Three one-time costs stack on a fresh machine:
    same process run at full speed.
 
 Every command also carries about two seconds of Python start-up. The
-published realtime figure is decode time only, over utterances of up to
-30 s with the model already loaded; `fermion transcribe --verbose` prints
+realtime figures on each model's page are decode time only, with the model
+already loaded; `fermion transcribe --verbose` prints
 the decode-only time and the whole command's wall-clock time side by side.
 
 A long blank pause with no output is not one of these: downloads always show

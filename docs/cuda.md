@@ -1,11 +1,8 @@
-# Running on NVIDIA (experimental)
+# Running on NVIDIA
 
-An experimental CUDA runtime exists for machines without Apple silicon:
-English, 16 kHz input, greedy decode, NVIDIA GPU required. The supported
-paths remain the Mac runtime and the `fermion` CLI. Accuracy is matched
-against the Mac reference on paired test sets, but transcripts are not
-word-identical across backends (floating-point reduction order differs
-between Metal and CUDA).
+The CUDA image runs Phonon-2 on NVIDIA GPUs, and the Phonon-1 family has its own earlier image. Input is English,
+16 kHz audio, greedy decode, NVIDIA GPU required. Accuracy is matched against the Mac reference on paired test sets,
+but transcripts are not word-identical across backends (floating-point reduction order differs between Metal and CUDA).
 
 Two images. **Phonon-2** ships as `ghcr.io/fermionresearch/phonon-cuda:1.0.3` (also `:latest`): it downloads the
 model from the Hub on first run and serves `--model phonon-2` only; built from [docker-phonon2/](../docker-phonon2/).
@@ -17,7 +14,7 @@ docker run --rm --gpus all -p 127.0.0.1:8000:8000 ghcr.io/fermionresearch/phonon
 
 The **Phonon-1 family** image is `ghcr.io/fermionresearch/phonon-cuda:0.3.0` (built from [docker/](../docker/)); it also
 comes as a bare single-utterance script. From image `0.3.0` all three Phonon-1 models run in the container: `--model
-phonon-1-big` (the default), `--model phonon-1`, `--model phonon-1-micro`.
+phonon-1-big` (that image's own default), `--model phonon-1`, `--model phonon-1-micro`.
 (`0.2.0` added long-audio transcription, live streaming over WebSocket and
 bounded request queueing; the earlier `0.1.0-preview` tag is
 single-utterance transcribe + serve.)

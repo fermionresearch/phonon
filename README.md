@@ -1,72 +1,20 @@
 # Phonon
 
-Open speech recognition models for English from Fermion Research: **Phonon-2** (164 MB,
-the current model — see its section below) and the **Phonon-1** family.
+Phonon is the speech recognition engine from Fermion Research. It runs the Phonon models on Apple silicon through MLX,
+on CPUs under Linux (x86-64 and Arm), Windows and macOS, and on NVIDIA GPUs through the CUDA image. It transcribes files
+from the command line, transcribes the microphone live, and serves an OpenAI-compatible endpoint. Phonon-2, a 164 MB
+download, is the default model, and Phonon-1 (415 MB), Phonon-1 Big (581 MB) and Phonon-1 Micro (285 MB) run by name.
 
-Phonon-1 is an open speech recognition model for English. It downloads in
-415 MB, runs on a laptop or a datacenter GPU, and transcribes an hour of audio
-in about two and a half minutes. It was trained at 2.4 bits per weight from
-the start, and it is the second low-bit model after
-Neutrino-1.
+## Models
 
-Models: [Phonon-1](https://huggingface.co/FermionResearch/Phonon-1) ·
-[Phonon-1-Micro](https://huggingface.co/FermionResearch/Phonon-1-Micro) ·
-[Phonon-1-Big](https://huggingface.co/FermionResearch/Phonon-1-Big)
+| Model | Download | Weights |
+|---|--:|---|
+| **Phonon-2** (default, `--model phonon-2`) | 164 MB | [huggingface.co/FermionResearch/Phonon-2](https://huggingface.co/FermionResearch/Phonon-2) |
+| Phonon-1 (`--model phonon-1`) | 415 MB | [huggingface.co/FermionResearch/Phonon-1](https://huggingface.co/FermionResearch/Phonon-1) |
+| Phonon-1 Micro (`--model phonon-1-micro`) | 285 MB | [huggingface.co/FermionResearch/Phonon-1-Micro](https://huggingface.co/FermionResearch/Phonon-1-Micro) |
+| Phonon-1 Big (`--model phonon-1-big`) | 581 MB | [huggingface.co/FermionResearch/Phonon-1-Big](https://huggingface.co/FermionResearch/Phonon-1-Big) |
 
-## Phonon-2
-
-Phonon-2 is the most accurate open speech recognition model for English under 900 MB. Across the Open ASR Leaderboard's
-seven English sets it averages 5.21 % word error, and every open model that scores better is at least 5.8 times its size.
-Set for set it holds the accuracy of its 2.5 GB full-precision teacher, reaching 100.8 % of the teacher's word accuracy on
-parliamentary speech and beating it on meetings, from a download 15 times smaller. Its encoder holds each weight at one of
-five learned levels in about 2.1 bits.
-
-It transcribes an hour of audio in about 20 seconds on an M5 MacBook Air (174x realtime), at 143x on eight Zen 5 cores
-(16 vCPU) and at 6,680x on one H100 in batches of 128.
-
-| Model | Download | LS clean | LS other | AMI | Earnings-22 | GigaSpeech | SPGISpeech | VoxPopuli | Average |
-|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
-| **Phonon-2** | **164 MB** | 1.72 | 3.92 | 9.37 | 6.96 | 8.35 | 3.70 | **2.46** | 5.21 |
-| Parakeet TDT 0.6B v3, teacher† | 2,508 MB | **1.52** | **3.13** | 9.42 | **5.85** | **7.99** | 3.63 | 3.19 | **4.96** |
-| Parakeet Redux | 178 MB | 1.94 | 4.35 | **9.16** | 7.90 | 8.62 | 4.01 | 3.87 | 5.69 |
-| Phonon-1 | 415 MB | 2.11 | 5.03 | 10.31 | 12.34 | 8.73 | 3.67 | 3.73 | 6.56 |
-| Canary 180M Flash† | 737 MB | **1.52** | 3.42 | 12.09 | 8.33 | 8.87 | **2.04** | 3.57 | 5.69 |
-| Voxtral Mini 4B Realtime† | ≈8,000 MB* | 1.62 | 4.94 | 13.34 | 9.31 | 8.80 | 2.23 | 2.60 | 6.12 |
-| Whisper large-v3-turbo† | 1,618 MB | 2.13 | 3.71 | 13.88 | 8.09 | 8.47 | 2.79 | 7.02 | 6.58 |
-| Nemotron 3.5 ASR Streaming 0.6B† | 2,368 MB | 2.83 | 6.79 | 13.43 | 15.30 | 9.86 | 3.27 | 4.24 | 7.96 |
-
-† Open ASR Leaderboard's published row; the other rows use its code on the full test sets. * Size from the parameter count at 16 bits.
-
-
-```bash
-pip install fermion-research
-fermion transcribe recording.wav --model phonon-2      # Apple silicon (MLX), Linux, Windows: the CPU engine; NVIDIA GPUs: the CUDA image
-docker run --rm -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cpu:2.0.2 transcribe /audio/recording.wav --model phonon-2
-docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:1.0.3 transcribe /audio/recording.wav --model phonon-2
-```
-
-The weights are at [huggingface.co/FermionResearch/Phonon-2](https://huggingface.co/FermionResearch/Phonon-2). Based on
-parakeet-tdt-0.6b-v3 by NVIDIA; the tokenizer and output conventions (punctuation, casing, numerals) are the original's.
-Licence CC-BY-4.0, same as the original; the weights repository's `NOTICE` lists the changes. The
-CUDA image is built from [docker-phonon2/](docker-phonon2/) and the CPU image from [docker-cpu-phonon2/](docker-cpu-phonon2/).
-
-## Benchmarks
-
-| Dataset | Phonon-1 (415 MB) | Phonon-1 Micro (285 MB) | Parakeet-0.6B 4-bit (637 MB) | Moonshine base (248 MB) | Whisper large-v3-turbo (1,619 MB) | Whisper small (967 MB) | wav2vec2-large (1,262 MB) | Qwen3-ASR teacher (1,569 MB) |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| LibriSpeech test-clean | 2.640 | 3.002 | 2.186 | 3.417 | 2.10 | 3.4† | 2.8† | 2.235 |
-| LibriSpeech test-other | 5.699 | 6.511 | 3.937 | 8.262 | 4.07 | 7.6† | 6.3† | 4.618 |
-| TED-LIUM | 3.421 | 3.878 | 2.829 | 5.272 | — | — | — | 2.889 |
-| SPGISpeech | 4.163 | 4.858 | 4.104 | 5.731 | 2.79† | — | 13.31† | 3.074 |
-| VoxPopuli | 8.394 | 9.177 | 6.345 | 10.470 | 11.22† | — | — | 7.151 |
-| GigaSpeech | 11.396 | 11.882 | 9.614 | 12.114 | 8.52† | — | — | 9.321 |
-| Earnings-22 | 12.571 | 14.771 | 11.190 | 17.872 | 11.07† | — | 36.28† | 11.188 |
-| AMI | 13.084 | 14.094 | 12.723 | 17.790 | 15.16† | — | — | 12.560 |
-| Macro (eight benchmarks) | 7.67 | 8.52 | 6.62 | 10.1 | — | — | — | 6.63 |
-
-Word error rate, lower is better. Unmarked cells: measured by us — full test sets, Whisper English text normalizer, greedy decoding. † = published figure (model card, paper, or the Open ASR Leaderboard). Dash = no comparable measurement.
-
-Median 23.9× realtime across nine corpora on a base M5 MacBook Air.
+Accuracy and speed for each model are on its model page ([fermionresearch.com/models/phonon-2](https://fermionresearch.com/models/phonon-2/) and the model cards above).
 
 ## Install
 
@@ -74,45 +22,61 @@ Median 23.9× realtime across nine corpora on a base M5 MacBook Air.
 pip install fermion-research
 ```
 
-On an Apple-silicon Mac, add the speech runtime:
+**Apple silicon (MLX engine)**
 
 ```bash
 pip install mlx mlx-audio mlx-lm soundfile scipy zstandard
 ```
 
-## Run it
-
-Phonon runs on Apple silicon through MLX, on NVIDIA GPUs through the
-Docker image, and on ordinary CPUs — x86-64 Linux and Windows, and
-Apple silicon — through the CPU runtime ([docs/cpu.md](docs/cpu.md)).
+**Linux and Windows CPUs.** On Linux, install torch from its CPU wheel index first, which skips the GPU build.
 
 ```bash
-fermion transcribe recording.wav   # transcribe a file
-fermion listen                     # live microphone transcription
-fermion serve                      # OpenAI-compatible HTTP server
+pip install torch --index-url https://download.pytorch.org/whl/cpu   # Linux only
+pip install fermion-research torch safetensors soundfile scipy zstandard
+```
+
+**CPU container (amd64 and arm64)**
+
+```bash
+docker run --rm -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cpu:2.0.2 transcribe /audio/recording.wav --model phonon-2
+```
+
+**NVIDIA CUDA container**
+
+```bash
+docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:1.0.3 transcribe /audio/recording.wav --model phonon-2
+```
+
+## Run
+
+```bash
+fermion transcribe recording.wav   # transcribe a file (Phonon-2)
+fermion listen                     # live microphone transcription (Apple silicon)
+fermion serve                      # OpenAI-compatible HTTP server on 127.0.0.1:8000
 ```
 
 ```bash
 curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
   -F "file=@recording.wav" \
-  -F "model=FermionResearch/Phonon-1"
+  -F "model=phonon-2"
 ```
 
-```bash
-docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:latest transcribe /audio/recording.wav
-```
-
-The NVIDIA CUDA runtime lives in [cuda/](cuda/).
+`fermion models` lists every model with its aliases and marks the ones already on the machine.
 
 ## Documentation
 
-- [docs/cli.md](docs/cli.md): the command line.
-- [docs/server.md](docs/server.md): the HTTP server and its API.
-- [docs/install.md](docs/install.md): installation on every platform.
-- [docs/troubleshooting.md](docs/troubleshooting.md): fixes for common problems.
-- [docs/cuda.md](docs/cuda.md): the NVIDIA CUDA runtime and Docker image.
-- [docs/cpu.md](docs/cpu.md): running on CPUs, no GPU required.
+- [docs/cli.md](docs/cli.md), the command line.
+- [docs/server.md](docs/server.md), the HTTP server and its API.
+- [docs/install.md](docs/install.md), installation on every platform.
+- [docs/cpu.md](docs/cpu.md), running on CPUs, no GPU required.
+- [docs/cuda.md](docs/cuda.md), the NVIDIA CUDA image.
+- [docs/troubleshooting.md](docs/troubleshooting.md), fixes for common problems.
 
-## License
+The CUDA image is built from [docker-phonon2/](docker-phonon2/) and the CPU image from [docker-cpu-phonon2/](docker-cpu-phonon2/).
 
-**Phonon-2 weights: CC-BY-4.0** (a derivative of NVIDIA's parakeet-tdt-0.6b-v3; the weights repository's `NOTICE` lists the changes). **Phonon-1 family weights and the [command line](https://pypi.org/project/fermion-research/): Apache License 2.0.** See [LICENSE](LICENSE) and [NOTICE](NOTICE). Base model: [`Qwen/Qwen3-ASR-0.6B`](https://huggingface.co/Qwen/Qwen3-ASR-0.6B), Apache-2.0.
+## Licence
+
+The Phonon-2 weights are released under CC-BY-4.0. They are a derivative of NVIDIA's parakeet-tdt-0.6b-v3, with the changes
+listed in the [NOTICE file of the weights repository](https://huggingface.co/FermionResearch/Phonon-2/blob/main/NOTICE). The
+Phonon-1 family weights and the command line are released under Apache-2.0, and Phonon-1 is built on
+[Qwen/Qwen3-ASR-0.6B](https://huggingface.co/Qwen/Qwen3-ASR-0.6B), also under Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

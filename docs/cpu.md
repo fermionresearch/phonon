@@ -1,13 +1,10 @@
 # Running on CPUs
 
-Phonon-1, Phonon-1 Big and Phonon-1 Micro transcribe speech on ordinary
-CPUs — no GPU required. Supported machines: x86-64 and 64-bit ARM
-Linux, x86-64 Windows (AVX2 on x86-64, which is any mainstream CPU
-from roughly 2014 on; NEON on ARM) and Apple silicon Macs. The models
-are the same published archives the other runtimes use (415 MB, 581 MB and 285 MB downloads), decoded with the same
-configuration behind the published accuracy numbers (greedy decode,
-temperature 0.0, max 512 tokens).
-`--model phonon` is Phonon-1, the default, exactly as on a Mac.
+The CPU engine runs Phonon-2 by default, and the Phonon-1 family by name, on Linux (x86-64 and Arm), Windows and
+macOS with no GPU. Supported machines are x86-64 (AVX2, which is any mainstream CPU from roughly 2014 on) and 64-bit
+Arm (NEON) under Linux, x86-64 Windows, and Apple silicon Macs. The models are the same published archives the other
+engines use (164 MB, 415 MB, 581 MB and 285 MB downloads), decoded with the same configuration as on a Mac (greedy
+decode, temperature 0.0). `--model phonon` is Phonon-2, the default, exactly as on a Mac.
 
 Accuracy is matched against the Mac reference on paired test sets, but
 transcripts are not word-identical across backends (floating-point
@@ -21,7 +18,8 @@ outside the envelope is refused with an actionable message.
 
 ```sh
 pip install fermion-research
-fermion transcribe recording.wav                       # Phonon-1
+fermion transcribe recording.wav                       # Phonon-2, the default
+fermion transcribe recording.wav --model phonon-1
 fermion transcribe recording.wav --model phonon-1-big
 fermion transcribe recording.wav --model phonon-1-micro
 ```
@@ -52,8 +50,8 @@ silicon, up to sixteen cores elsewhere. There is nothing to configure.
 ```sh
 docker run --rm \
   -v /path/to/audio:/audio \
-  ghcr.io/fermionresearch/phonon-cpu:latest \
-  transcribe /audio/recording.wav
+  ghcr.io/fermionresearch/phonon-cpu:2.0.2 \
+  transcribe /audio/recording.wav --model phonon-2
 ```
 
 `serve` exposes the same OpenAI-compatible endpoints as the GPU image
@@ -62,8 +60,8 @@ with the same API-key and queue behaviour, so clients written against
 either work unmodified against both. Without `--model-dir` the model is
 downloaded from Hugging Face; `-v /path/to/model:/model … --model-dir
 /model` runs fully offline. On Windows, run the container with Docker
-Desktop; no GPU is required for the CPU image. The container sources live in
-[docker-cpu/](../docker-cpu/).
+Desktop; no GPU is required for the CPU image. The image runs on amd64 and arm64; its sources live in
+[docker-cpu-phonon2/](../docker-cpu-phonon2/) (the Phonon-1 CPU image is built from [docker-cpu/](../docker-cpu/)).
 
 ## Verify an install
 

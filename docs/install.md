@@ -97,7 +97,7 @@ cache directory:
 fermion transcribe --download-only unused.wav   # prints the model directory
 
 # copy the unpacked tree to the offline machine, preserving the layout:
-#   ~/.cache/fermion/speech/FermionResearch__Phonon-1/model_v18_mlx_head8audio6_quint5/
+#   ~/.cache/fermion/speech/FermionResearch__Phonon-2/model_phonon2_c4c_int6/
 ```
 
 The cache layout the CLI reads is:
@@ -109,12 +109,12 @@ The cache layout the CLI reads is:
 - `<cache root>` is `~/.cache/fermion` by default, or `$FERMION_CACHE_DIR`
   if set.
 - `<Org__Repo>` is the repo id with `/` replaced by `__`, for example
-  `FermionResearch__Phonon-1`.
-- `<unpack_dir>` is the model's historical directory name:
-  `model_v18_mlx_head8audio6_quint5` for Phonon-1,
-  `model_v18_mlx_quint5` and `model_v18_mlx_hybrid4_quint5` for the other
-  two published models (`fermion models --json` prints each model's exact
-  expected path on your machine).
+  `FermionResearch__Phonon-2`.
+- `<unpack_dir>` is the model's directory name:
+  `model_phonon2_c4c_int6` for Phonon-2, `model_v18_mlx_head8audio6_quint5`
+  for Phonon-1, `model_v18_mlx_quint5` and `model_v18_mlx_hybrid4_quint5` for
+  Phonon-1 Big and Phonon-1 Micro (`fermion models --json` prints each model's
+  exact expected path on your machine).
 - A directory is treated as installed when `config.json` and
   `packed_manifest.json` exist side by side inside it.
 
@@ -139,7 +139,8 @@ still tries to reach the Hugging Face Hub.
 
 | Model | Download | Unpacked on disk | Peak during install |
 |---|---|---|---|
-| `FermionResearch/Phonon-1` (default) | 415 MB | 455 MB | ~870 MB |
+| `FermionResearch/Phonon-2` (default) | 164 MB | 178 MB | ~342 MB |
+| `FermionResearch/Phonon-1` | 415 MB | 455 MB | ~870 MB |
 | `FermionResearch/Phonon-1-Micro` | 285 MB | 331 MB | ~616 MB |
 | `FermionResearch/Phonon-1-Big` | 581 MB | 822 MB | ~1.4 GB |
 

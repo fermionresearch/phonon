@@ -1,9 +1,8 @@
 # CLI reference
 
 The `fermion` command ships in the `fermion-research` pip package
-(version 0.2.2 at the time of writing). One CLI runs two model families:
-**Phonon** (speech recognition, Apple silicon and x86-64 CPUs) and **Neutrino** (language
-models, all platforms). This page covers the speech commands in full and the
+(version 0.2.3 at the time of writing). The fermion command runs the Phonon speech models and the Neutrino
+language models from one install. This page covers the speech commands in full and the
 Neutrino commands in brief.
 
 ```
@@ -39,7 +38,7 @@ usage: fermion transcribe [-h] [--model MODEL] [--json] [--verbose]
 | Argument | Meaning |
 |---|---|
 | `audio` | Path to an audio file. Anything libsndfile reads: wav, flac, ogg, aiff. Any sample rate and channel count (resampled to 16 kHz mono internally). mp3/m4a are not read; convert first: `ffmpeg -i in.m4a -ar 16000 -ac 1 out.wav`. |
-| `--model MODEL` | Speech model repo id, alias, or a local unpacked model directory. Default: `FermionResearch/Phonon-1`. See [Model selection](#model-selection). |
+| `--model MODEL` | Speech model repo id, alias, or a local unpacked model directory. Default: `FermionResearch/Phonon-2`. See [Model selection](#model-selection). |
 | `--json` | Emit a JSON object instead of bare text: text, timings, per-segment timestamps, `truncated` flag. |
 | `--verbose` | Print the decode configuration and timings to stderr (decode-only and wall-clock, separately, plus the segment count). |
 | `--download-only` | Fetch and verify the model, print its local directory, then stop without decoding. |
@@ -60,8 +59,8 @@ Audio is read from a file path, not from stdin. There is no `-` argument.
 ### `--json` output shape
 
 ```json
-{"text": "...", "model": "FermionResearch/Phonon-1", "profile": "audio6",
- "backend": "audio6", "engine": "mlx",
+{"text": "...", "model": "FermionResearch/Phonon-2", "profile": "five-value",
+ "backend": "phonon2-five-value", "engine": "mlx",
  "duration_seconds": 4.2, "decode_seconds": 0.31, "wall_seconds": 2.4,
  "segment_count": 1,
  "segments": [{"id": 0, "start": 0.0, "end": 4.2, "text": "..."}],
@@ -237,7 +236,8 @@ profile.
 
 | Model (repo id) | Aliases | Profile | Download | On disk |
 |---|---|---|---|---|
-| `FermionResearch/Phonon-1` (default) | `phonon`, `phonon-1`, `speech`, `stt`, `asr` | `audio6` | 415 MB | 455 MB |
+| `FermionResearch/Phonon-2` (default) | `phonon-2`, `phonon2`, `phonon`, `speech`, `stt`, `asr` | `five-value` | 164 MB | 178 MB |
+| `FermionResearch/Phonon-1` | `phonon-1` | `audio6` | 415 MB | 455 MB |
 | `FermionResearch/Phonon-1-Big` | `phonon-1-big`, `phonon-big`, `big` | `parity` | 581 MB | 822 MB |
 | `FermionResearch/Phonon-1-Micro` | `phonon-1-micro`, `phonon-micro`, `micro` | `micro` | 285 MB | 331 MB |
 
@@ -247,7 +247,7 @@ profile.
   default model, so `fermion transcribe clip.wav` with no `--model` does the
   expected thing.
 - A local directory is accepted anywhere a repo id is:
-  `--model /path/to/model_v18_mlx_head8audio6_quint5`. The directory must
+  `--model /path/to/model_phonon2_c4c_int6`. The directory must
   hold `config.json` and `packed_manifest.json` side by side.
 
 ### What a fresh machine downloads, and where it lands
@@ -264,7 +264,7 @@ On first use of a model, the CLI:
    inference time.
 3. Caches the unpacked model under
    `~/.cache/fermion/speech/<Org__Repo>/<unpack_dir>/`, for example
-   `~/.cache/fermion/speech/FermionResearch__Phonon-1/model_v18_mlx_head8audio6_quint5/`.
+   `~/.cache/fermion/speech/FermionResearch__Phonon-2/model_phonon2_c4c_int6/`.
    The downloaded archive itself sits in the Hugging Face hub cache
    (`~/.cache/huggingface/hub` by default).
 

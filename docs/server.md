@@ -74,8 +74,8 @@ newline.
   "duration": 4.2,
   "segments": [],
   "x_fermion": {
-    "model": "FermionResearch/Phonon-1",
-    "profile": "audio6",
+    "model": "FermionResearch/Phonon-2",
+    "profile": "five-value",
     "decode_seconds": 0.31,
     "kind": "speech",
     "backend": "audio6",
@@ -123,7 +123,7 @@ curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
 # Bare text, with an API key
 curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
   -H "Authorization: Bearer YOUR_KEY" \
-  -F file=@clip.wav -F model=phonon-1 -F response_format=text
+  -F file=@clip.wav -F model=phonon-2 -F response_format=text
 
 # Verbose JSON
 curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
@@ -137,7 +137,7 @@ from openai import OpenAI
 
 client = OpenAI(base_url="http://127.0.0.1:8000/v1", api_key="YOUR_KEY")
 out = client.audio.transcriptions.create(
-    model="phonon-1", file=open("clip.wav", "rb"))
+    model="phonon-2", file=open("clip.wav", "rb"))
 print(out.text)
 ```
 
@@ -151,21 +151,21 @@ monitoring works without credentials). A speech server answers:
 ```json
 {
   "status": "ok",
-  "model": "FermionResearch/Phonon-1",
+  "model": "FermionResearch/Phonon-2",
   "kind": "speech",
-  "version": "0.2.2",
-  "repo": "FermionResearch/Phonon-1",
-  "profile": "audio6",
+  "version": "0.2.3",
+  "repo": "FermionResearch/Phonon-2",
+  "profile": "five-value",
   "sha256": "…",
-  "sha256_short": "214c3b45",
-  "download_bytes": 415077202,
+  "sha256_short": "98125795",
+  "download_bytes": 163515201,
   "model_dir": "…",
   "decode": { "…": "the exact decode configuration in force" },
   "endpoints": ["/v1/audio/transcriptions", "/v1/audio/stream",
                 "/v1/models", "/health"],
   "tool_calling": false,
-  "stats": {"requests": 12, "streams": 2, "audio_seconds": 51.4,
-            "decode_seconds": 2.2, "errors": 0, "realtime_factor": 23.4}
+  "stats": {"requests": "…", "streams": "…", "audio_seconds": "…",
+            "decode_seconds": "…", "errors": "…", "realtime_factor": "…"}
 }
 ```
 
