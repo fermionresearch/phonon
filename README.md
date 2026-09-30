@@ -38,13 +38,13 @@ pip install fermion-research torch safetensors soundfile scipy zstandard
 **CPU container (amd64 and arm64)**
 
 ```bash
-docker run --rm -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cpu:2.0.2 transcribe /audio/recording.wav --model phonon-2
+docker run --rm -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cpu:2.0.3 transcribe phonon-2 /audio/recording.wav
 ```
 
 **NVIDIA CUDA container**
 
 ```bash
-docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:1.0.3 transcribe /audio/recording.wav --model phonon-2
+docker run --rm --gpus all -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.4 transcribe phonon-2 /audio/recording.wav
 ```
 
 ## Run
@@ -52,15 +52,15 @@ docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:
 `phonon` runs Phonon-2, `phonon-1` runs Phonon-1, and `fermion <command> <model>` runs any model by name. Name the model. Phonon never guesses.
 
 ```bash
-phonon transcribe recording.wav             # transcribe a file with Phonon-2
+phonon transcribe meeting.wav               # transcribe a file with Phonon-2
 phonon listen                               # live microphone transcription (Apple silicon)
 phonon serve                                # OpenAI-compatible HTTP server on 127.0.0.1:8000
-fermion transcribe phonon-2 recording.wav   # the same, naming the model
+fermion transcribe phonon-2 meeting.wav     # the same, naming the model
 ```
 
 ```bash
 curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
-  -F "file=@recording.wav" \
+  -F "file=@meeting.wav" \
   -F "model=phonon-2"
 ```
 
@@ -70,7 +70,7 @@ A dictation tool keeps one Phonon server running and sends each recording to it,
 
 ```bash
 fermion serve phonon-2 --port 8010 --threads 4         # or: phonon serve --port 8010
-fermion serve phonon-2 --unix-socket ~/.phonon.sock    # owner-only socket in place of an API key
+fermion serve phonon-2 --unix-socket ~/.cache/fermion/phonon.sock   # owner-only socket in place of an API key
 ```
 
 ```toml
