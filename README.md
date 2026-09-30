@@ -64,6 +64,25 @@ curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
   -F "model=phonon-2"
 ```
 
+### Dictation tools
+
+[[LEAD_DICTATION]]
+
+```bash
+fermion serve phonon-2 --port 8010 --threads 4         # or: phonon serve --port 8010
+fermion serve phonon-2 --unix-socket ~/.phonon.sock    # owner-only socket in place of an API key
+```
+
+```toml
+engine = "whisper"
+[whisper]
+backend = "remote"
+remote_endpoint = "http://127.0.0.1:8010"
+remote_model = "phonon-2"
+```
+
+Keeping the server running at login is covered in [docs/server.md](docs/server.md).
+
 `fermion models` lists every model with its aliases and marks the ones already on the machine.
 
 ## Documentation
