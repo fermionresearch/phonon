@@ -50,9 +50,9 @@ docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:
 ## Run
 
 ```bash
-fermion transcribe recording.wav   # transcribe a file (Phonon-2)
+fermion transcribe recording.wav   # transcribe a file (Phonon-2, the default)
 fermion listen                     # live microphone transcription (Apple silicon)
-fermion serve                      # OpenAI-compatible HTTP server on 127.0.0.1:8000
+fermion serve --model phonon-2     # OpenAI-compatible HTTP server on 127.0.0.1:8000
 ```
 
 ```bash
