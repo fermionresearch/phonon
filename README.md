@@ -3,7 +3,7 @@
 Phonon is the speech recognition engine from Fermion Research. It runs the Phonon models on Apple silicon through MLX,
 on CPUs under Linux (x86-64 and Arm), Windows and macOS, and on NVIDIA GPUs through the CUDA image. It transcribes files
 from the command line, transcribes the microphone live, and serves an OpenAI-compatible endpoint. Phonon-2, a 164 MB
-download, is the current model, and Phonon-1 (415 MB), Phonon-1 Big (581 MB) and Phonon-1 Micro (285 MB) also run. Name the model. Phonon never guesses.
+download, is the current model, and Phonon-1 (415 MB), Phonon-1 Big (581 MB) and Phonon-1 Micro (285 MB) also run.
 
 ## Models
 
@@ -49,12 +49,13 @@ docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:
 
 ## Run
 
-Every command names its model.
+`phonon` runs Phonon-2, `phonon-1` runs Phonon-1, and `fermion <command> <model>` runs any model by name. Name the model. Phonon never guesses.
 
 ```bash
-fermion transcribe phonon-2 recording.wav   # transcribe a file
-fermion listen phonon-2                     # live microphone transcription (Apple silicon)
-fermion serve phonon-2                      # OpenAI-compatible HTTP server on 127.0.0.1:8000
+phonon transcribe recording.wav             # transcribe a file with Phonon-2
+phonon listen                               # live microphone transcription (Apple silicon)
+phonon serve                                # OpenAI-compatible HTTP server on 127.0.0.1:8000
+fermion transcribe phonon-2 recording.wav   # the same, naming the model
 ```
 
 ```bash
