@@ -139,7 +139,7 @@ still tries to reach the Hugging Face Hub.
 
 | Model | Download | Unpacked on disk | Peak during install |
 |---|---|---|---|
-| `FermionResearch/Phonon-2` (default) | 164 MB | 178 MB | ~342 MB |
+| `FermionResearch/Phonon-2` | 164 MB | 178 MB | ~342 MB |
 | `FermionResearch/Phonon-1` | 415 MB | 455 MB | ~870 MB |
 | `FermionResearch/Phonon-1-Micro` | 285 MB | 331 MB | ~616 MB |
 | `FermionResearch/Phonon-1-Big` | 581 MB | 822 MB | ~1.4 GB |

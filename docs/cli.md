@@ -38,7 +38,7 @@ usage: fermion transcribe [-h] [--model MODEL] [--json] [--verbose]
 | Argument | Meaning |
 |---|---|
 | `audio` | Path to an audio file. Anything libsndfile reads: wav, flac, ogg, aiff. Any sample rate and channel count (resampled to 16 kHz mono internally). mp3/m4a are not read; convert first: `ffmpeg -i in.m4a -ar 16000 -ac 1 out.wav`. |
-| `--model MODEL` | Speech model repo id, alias, or a local unpacked model directory. Default: `FermionResearch/Phonon-2`. See [Model selection](#model-selection). |
+| `--model MODEL` | Speech model repo id, alias, or a local unpacked model directory. Required. See [Model selection](#model-selection). |
 | `--json` | Emit a JSON object instead of bare text: text, timings, per-segment timestamps, `truncated` flag. |
 | `--verbose` | Print the decode configuration and timings to stderr (decode-only and wall-clock, separately, plus the segment count). |
 | `--download-only` | Fetch and verify the model, print its local directory, then stop without decoding. |
@@ -166,7 +166,7 @@ model you pass determines which endpoints are mounted.**
 ### Speech mode
 
 ```bash
-fermion serve --model phonon
+fermion serve phonon
 ```
 
 With a speech model, the server mounts:
@@ -236,16 +236,15 @@ profile.
 
 | Model (repo id) | Aliases | Profile | Download | On disk |
 |---|---|---|---|---|
-| `FermionResearch/Phonon-2` (default) | `phonon-2`, `phonon2`, `phonon`, `speech`, `stt`, `asr` | `five-value` | 164 MB | 178 MB |
+| `FermionResearch/Phonon-2` | `phonon-2`, `phonon2`, `phonon`, `speech`, `stt`, `asr` | `five-value` | 164 MB | 178 MB |
 | `FermionResearch/Phonon-1` | `phonon-1` | `audio6` | 415 MB | 455 MB |
 | `FermionResearch/Phonon-1-Big` | `phonon-1-big`, `phonon-big`, `big` | `parity` | 581 MB | 822 MB |
 | `FermionResearch/Phonon-1-Micro` | `phonon-1-micro`, `phonon-micro`, `micro` | `micro` | 285 MB | 331 MB |
 
 - Aliases and repo ids are case-insensitive
   (`--model fermionresearch/phonon-1` works).
-- The bare family aliases (`phonon`, `speech`, `stt`, `asr`) resolve to the
-  default model, so `fermion transcribe clip.wav` with no `--model` does the
-  expected thing.
+- Every speech verb takes the model first, for example `fermion transcribe phonon-2 clip.wav`.
+  A command without a model prints the model names and exits.
 - A local directory is accepted anywhere a repo id is:
   `--model /path/to/model_phonon2_c4c_int6`. The directory must
   hold `config.json` and `packed_manifest.json` side by side.

@@ -1,10 +1,10 @@
 # Running on CPUs
 
-The CPU engine runs Phonon-2 by default, and the Phonon-1 family by name, on Linux (x86-64 and Arm), Windows and
+The CPU engine runs Phonon-2 and the Phonon-1 family, on Linux (x86-64 and Arm), Windows and
 macOS with no GPU. Supported machines are x86-64 (AVX2, which is any mainstream CPU from roughly 2014 on) and 64-bit
 Arm (NEON) under Linux, x86-64 Windows, and Apple silicon Macs. The models are the same published archives the other
 engines use (164 MB, 415 MB, 581 MB and 285 MB downloads), decoded with the same configuration as on a Mac (greedy
-decode, temperature 0.0). `--model phonon` is Phonon-2, the default, exactly as on a Mac.
+decode, temperature 0.0). Every command names its model, on every platform. Name the model. Phonon never guesses.
 
 Accuracy is matched against the Mac reference on paired test sets, but
 transcripts are not word-identical across backends (floating-point
@@ -18,10 +18,10 @@ outside the envelope is refused with an actionable message.
 
 ```sh
 pip install fermion-research
-fermion transcribe recording.wav                       # Phonon-2, the default
-fermion transcribe recording.wav --model phonon-1
-fermion transcribe recording.wav --model phonon-1-big
-fermion transcribe recording.wav --model phonon-1-micro
+fermion transcribe phonon-2 recording.wav
+fermion transcribe phonon-1 recording.wav
+fermion transcribe phonon-1-big recording.wav
+fermion transcribe phonon-1-micro recording.wav
 ```
 
 On a machine that still needs the CPU speech runtime, `fermion transcribe`

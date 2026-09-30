@@ -1,6 +1,6 @@
 # HTTP API reference (speech)
 
-`fermion serve --model phonon` starts an OpenAI-compatible speech server.
+`fermion serve phonon` starts an OpenAI-compatible speech server.
 It is standard library only (no FastAPI, no uvicorn), binds
 `127.0.0.1:8000` by default, and mounts exactly three routes:
 
@@ -16,11 +16,11 @@ a client can discover what exists in one request. The chat/completions
 endpoints are not mounted on a speech server; requests to them get a 404
 whose message names the endpoint that does exist here. (Conversely, an LLM
 server answers the audio routes with a 404 pointing at
-`fermion serve --model phonon`.)
+`fermion serve phonon`.)
 
 ```bash
-fermion serve --model phonon
-fermion serve --model phonon --port 8080 --api-key "$(openssl rand -hex 24)"
+fermion serve phonon
+fermion serve phonon --port 8080 --api-key "$(openssl rand -hex 24)"
 ```
 
 Startup notes print to stderr: the base URL, the served profile and decode

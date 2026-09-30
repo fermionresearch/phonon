@@ -3,16 +3,16 @@
 Phonon is the speech recognition engine from Fermion Research. It runs the Phonon models on Apple silicon through MLX,
 on CPUs under Linux (x86-64 and Arm), Windows and macOS, and on NVIDIA GPUs through the CUDA image. It transcribes files
 from the command line, transcribes the microphone live, and serves an OpenAI-compatible endpoint. Phonon-2, a 164 MB
-download, is the default model, and Phonon-1 (415 MB), Phonon-1 Big (581 MB) and Phonon-1 Micro (285 MB) run by name.
+download, is the current model, and Phonon-1 (415 MB), Phonon-1 Big (581 MB) and Phonon-1 Micro (285 MB) also run. Name the model. Phonon never guesses.
 
 ## Models
 
 | Model | Download | Weights |
 |---|--:|---|
-| **Phonon-2** (default, `--model phonon-2`) | 164 MB | [huggingface.co/FermionResearch/Phonon-2](https://huggingface.co/FermionResearch/Phonon-2) |
-| Phonon-1 (`--model phonon-1`) | 415 MB | [huggingface.co/FermionResearch/Phonon-1](https://huggingface.co/FermionResearch/Phonon-1) |
-| Phonon-1 Micro (`--model phonon-1-micro`) | 285 MB | [huggingface.co/FermionResearch/Phonon-1-Micro](https://huggingface.co/FermionResearch/Phonon-1-Micro) |
-| Phonon-1 Big (`--model phonon-1-big`) | 581 MB | [huggingface.co/FermionResearch/Phonon-1-Big](https://huggingface.co/FermionResearch/Phonon-1-Big) |
+| **Phonon-2** (`phonon-2`) | 164 MB | [huggingface.co/FermionResearch/Phonon-2](https://huggingface.co/FermionResearch/Phonon-2) |
+| Phonon-1 (`phonon-1`) | 415 MB | [huggingface.co/FermionResearch/Phonon-1](https://huggingface.co/FermionResearch/Phonon-1) |
+| Phonon-1 Micro (`phonon-1-micro`) | 285 MB | [huggingface.co/FermionResearch/Phonon-1-Micro](https://huggingface.co/FermionResearch/Phonon-1-Micro) |
+| Phonon-1 Big (`phonon-1-big`) | 581 MB | [huggingface.co/FermionResearch/Phonon-1-Big](https://huggingface.co/FermionResearch/Phonon-1-Big) |
 
 Accuracy and speed for each model are on its model page ([fermionresearch.com/models/phonon-2](https://fermionresearch.com/models/phonon-2/) and the model cards above).
 
@@ -49,10 +49,12 @@ docker run --rm --gpus all -v "$PWD":/audio ghcr.io/fermionresearch/phonon-cuda:
 
 ## Run
 
+Every command names its model.
+
 ```bash
-fermion transcribe recording.wav   # transcribe a file (Phonon-2, the default)
-fermion listen                     # live microphone transcription (Apple silicon)
-fermion serve --model phonon-2     # OpenAI-compatible HTTP server on 127.0.0.1:8000
+fermion transcribe phonon-2 recording.wav   # transcribe a file
+fermion listen phonon-2                     # live microphone transcription (Apple silicon)
+fermion serve phonon-2                      # OpenAI-compatible HTTP server on 127.0.0.1:8000
 ```
 
 ```bash
