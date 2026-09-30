@@ -50,9 +50,9 @@ pip install fermion-research torch safetensors soundfile scipy zstandard
 fermion transcribe recording.wav
 ```
 
-On Linux, install torch from its CPU wheel index first (`pip install
-torch --index-url https://download.pytorch.org/whl/cpu`) to skip the much
-larger GPU build. On Windows the plain torch wheel already is the CPU
+On Linux, install torch from its CPU wheel index first (`pip install --no-deps
+torch --index-url https://download.pytorch.org/whl/cpu`, then the install line
+above, which adds torch's dependencies from PyPI) to skip the much larger GPU build. On Windows the plain torch wheel already is the CPU
 build; a clean machine may also need Microsoft's `vc_redist.x64.exe` (the
 fix when `import torch` fails with WinError 126). If anything is missing,
 the command prints the exact install line for this platform and exits.

@@ -31,7 +31,7 @@ pip install mlx mlx-audio mlx-lm soundfile scipy zstandard
 **Linux and Windows CPUs.** On Linux, install torch from its CPU wheel index first, which skips the GPU build.
 
 ```bash
-pip install torch --index-url https://download.pytorch.org/whl/cpu   # Linux only
+pip install --no-deps torch --index-url https://download.pytorch.org/whl/cpu   # Linux only
 pip install fermion-research torch safetensors soundfile scipy zstandard
 ```
 
