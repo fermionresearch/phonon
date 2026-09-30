@@ -66,7 +66,7 @@ curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
 
 ### Dictation tools
 
-[[LEAD_DICTATION]]
+A dictation tool keeps one Phonon server running and sends each recording to it, over a local port or an owner-only Unix socket.
 
 ```bash
 fermion serve phonon-2 --port 8010 --threads 4         # or: phonon serve --port 8010
