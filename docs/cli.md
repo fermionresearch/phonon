@@ -269,7 +269,7 @@ profile.
 Nothing is downloaded; the command prints the model list and exits 2:
 
 ```
-fermion transcribe: name the model. Fermion never guesses.
+fermion transcribe: name the model. Phonon never guesses.
 
   fermion transcribe phonon-2 meeting.wav
 
