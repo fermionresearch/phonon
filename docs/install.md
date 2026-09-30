@@ -66,6 +66,19 @@ line, before downloading anything. Everything Neutrino (`fermion chat`,
 `fermion models`) works on these platforms as normal. For running Phonon on
 NVIDIA GPUs, see [docs/cuda.md](cuda.md).
 
+Python 3.10 through 3.14 are supported on x86-64 and Arm Linux (the `python:3.10-slim` to
+`python:3.14-slim` images all install and transcribe). The CPU engine reads audio through
+libsndfile; on Alpine or any musl-based image the command refuses before downloading anything:
+
+```
+audio files cannot be read: soundfile could not load libsndfile. Install the system library and retry:
+    apk add libsndfile   (Alpine / musl: the manylinux wheel bundles libsndfile, the musl wheel does not)
+    [OSError: cannot load library 'libsndfile.so': Error loading shared library libsndfile.so: No such file or directory]
+```
+
+On glibc systems without the library the same message names `sudo apt install libsndfile1`
+(or the distribution's equivalent).
+
 ## Air-gapped / offline install
 
 Two things must be moved to the offline machine: the Python wheels and the
