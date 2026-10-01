@@ -91,9 +91,7 @@ def words_from_tokens(tokens, offset: float = 0.0, limit=None) -> list:
             cur.clear()
     for tok in tokens:
         piece, start, duration = str(tok[0]), float(tok[1]), float(tok[2])
-        if not piece.strip():
-            continue
-        if piece.startswith(" ") and cur and not _is_punctuation(piece.strip()):
+        if piece.startswith(" ") and cur and (not piece.strip() or not _is_punctuation(piece.strip())):   # a bare marker starts the next word
             flush()
         cur.append((piece, start, duration))
     flush()
