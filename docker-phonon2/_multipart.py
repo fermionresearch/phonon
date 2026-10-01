@@ -147,6 +147,9 @@ def parse(body: bytes, content_type: str, *, max_parts: int = 32) -> dict:
         name = params.get("name")
         if not name:
             continue
+        if name.endswith("[]") and "filename" not in params:
+            fields.setdefault(name, []).append(content.decode("utf-8", "replace"))   # the SDKs' timestamp_granularities[]
+            continue
         if name in fields:
             continue
         if "filename" in params:

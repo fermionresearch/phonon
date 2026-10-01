@@ -225,6 +225,31 @@ def cmd_transcribe(args) -> None:
 
 
 # --------------------------------------------------------------------- serve
+
+def _granularities(form) -> list:
+    """`timestamp_granularities` values from a parsed form: `timestamp_granularities[]` parts (the SDKs), a plain or
+    comma-separated string, or a JSON list string; lower-cased, de-duplicated, in order."""
+    raw: list = []
+    for key in ("timestamp_granularities[]", "timestamp_granularities"):
+        v = form.get(key)
+        if isinstance(v, list):
+            raw.extend(v)
+        elif isinstance(v, str):
+            t = v.strip()
+            if t.startswith("["):
+                try:
+                    val = json.loads(t); raw.extend(val if isinstance(val, list) else [val]); continue
+                except ValueError:
+                    pass
+            raw.extend(t.split(","))
+    out: list = []
+    for g in raw:
+        g = str(g).strip().strip('"').lower()
+        if g and g not in out:
+            out.append(g)
+    return out
+
+
 class DrainingHTTPServer(ThreadingHTTPServer):
     # Wait for in-flight handler threads on close (graceful SIGTERM drain).
     daemon_threads = False
@@ -438,12 +463,18 @@ class Handler(BaseHTTPRequestHandler):
                              "ignored"),
                 ("prompt", "prompt conditioning is not implemented"),
                 ("temperature", "transcription is deterministic "
-                                "(temperature 0)"),
-                ("timestamp_granularities",
-                 "word/segment timestamps are not returned")):
+                                "(temperature 0)")):
             if field in form and field not in self.server.warned_fields:  # type: ignore[attr-defined]
                 self.server.warned_fields.add(field)  # type: ignore[attr-defined]
                 sys.stderr.write(f"[{BRAND}] note: `{field}` — {why}\n")
+        # 1.0.5: `timestamp_granularities` selects `words` (word) in verbose_json; `segments` is always filled.
+        granularities = _granularities(form)
+        for g in granularities:
+            key = "timestamp_granularities:" + g
+            if g not in ("word", "segment") and key not in self.server.warned_fields:  # type: ignore[attr-defined]
+                self.server.warned_fields.add(key)  # type: ignore[attr-defined]
+                sys.stderr.write(f"[{BRAND}] note: `timestamp_granularities` value {g!r} is not supported; use word and/or segment\n")
+        want_words = "word" in granularities
 
         try:
             wav, duration = decode_audio(
@@ -456,7 +487,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._queue_full()
         try:
             t0 = time.perf_counter()
-            text, segments = self.engine.transcribe_long(
+            text, segments, words = self.engine.transcribe_long_timed(
                 wav, lock=self.server.gpu_lock)  # type: ignore[attr-defined]
             decode_s = time.perf_counter() - t0
         finally:
@@ -479,11 +510,13 @@ class Handler(BaseHTTPRequestHandler):
             out.update({
                 "task": "transcribe", "language": "english",
                 "duration": round(duration, 3),
-                "segments": [],
-                "x_phonon": {"decode_seconds": round(decode_s, 3),
-                             "audio_segments": segments,
-                             **self.engine.describe()},
+                "segments": segments,
             })
+            if want_words:
+                out["words"] = [{"word": w["text"], "start": w["start"], "end": w["end"]} for w in words]
+            out["x_phonon"] = {"decode_seconds": round(decode_s, 3),
+                               "audio_segments": len(segments),
+                               **self.engine.describe()}
         self._send_json(200, out)
 
     # ------------------------------------------------------------ WebSocket
