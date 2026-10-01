@@ -58,6 +58,7 @@ docker run --rm --gpus all -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache 
 
 ```bash
 phonon transcribe meeting.wav               # transcribe a file with Phonon-2
+phonon transcribe meeting.wav --json        # the same, as JSON with word timestamps
 phonon listen                               # live microphone transcription (Apple silicon)
 phonon serve                                # OpenAI-compatible HTTP server on 127.0.0.1:8000
 fermion transcribe phonon-2 meeting.wav     # the same, naming the model

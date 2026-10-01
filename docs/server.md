@@ -40,12 +40,13 @@ work unmodified against `base_url=http://127.0.0.1:8000/v1`.
 | `file` | yes | The audio. Anything libsndfile decodes: wav, flac, ogg, aiff (any rate/channels; resampled to 16 kHz mono). mp3/m4a are rejected with a message that includes the ffmpeg conversion line. |
 | `model` | no | Accepted and checked, never silently ignored: if it does not name the model this process serves (repo id, alias, or `--served-model-name`), the request gets a 404 `model_not_found` rather than a transcript from a model it did not ask for. |
 | `response_format` | no | `json` (default), `text`, or `verbose_json`. Anything else is a 400. |
+| `timestamp_granularities` | no | `word`, `segment`, or both (the OpenAI SDKs send `timestamp_granularities[]` once per value; a comma-separated string works too). With `word`, `verbose_json` carries `words`; `segments` is always filled. Needs `response_format=verbose_json`. |
 
-The OpenAI fields `language`, `prompt`, `temperature` and
-`timestamp_granularities` are accepted but not implemented; each is noted
-once per process on the server's stderr (the model is English-only,
-transcription is deterministic, and word/segment timestamps are not
-returned).
+The OpenAI fields `language`, `prompt` and `temperature` are accepted but
+not implemented; each is noted once per process on the server's stderr (the
+model is English-only and transcription is deterministic). A
+`timestamp_granularities` value other than `word` or `segment` is noted once
+and ignored.
 
 Request bodies are capped at 32 MB, and chunked transfer encoding is not
 supported. Audio longer than 35 s is decoded in 25-35 s windows cut at
@@ -64,15 +65,20 @@ than that before uploading.
 `response_format=text`: the bare transcript as `text/plain`, with a trailing
 newline.
 
-`response_format=verbose_json`:
+`response_format=verbose_json` (with `timestamp_granularities[]=word`):
 
 ```json
 {
-  "text": "The transcript.",
+  "text": "The transcript, word by word.",
   "task": "transcribe",
   "language": "english",
   "duration": 4.2,
-  "segments": [],
+  "segments": [{"id": 0, "start": 0.0, "end": 4.2, "text": "The transcript, word by word."}],
+  "words": [{"word": "The", "start": 0.32, "end": 0.48},
+            {"word": "transcript,", "start": 0.48, "end": 1.04},
+            {"word": "word", "start": 1.12, "end": 1.36},
+            {"word": "by", "start": 1.36, "end": 1.52},
+            {"word": "word.", "start": 1.52, "end": 1.84}],
   "x_fermion": {
     "model": "FermionResearch/Phonon-2",
     "profile": "five-value",
@@ -90,8 +96,15 @@ newline.
 }
 ```
 
-`duration` is the audio length in seconds. `segments` is always empty
-(segment timestamps are not produced). `x_fermion` is not in OpenAI's
+`duration` is the audio length in seconds. `segments` has one entry per
+decoded window with `start` and `end` in seconds: one window for audio up to
+35 s, 25-35 s windows cut at pauses beyond that. `words` is present when
+`timestamp_granularities` includes `word`: one entry per word in OpenAI's
+shape (`word`, `start`, `end`), in seconds from the start of the file, from
+the decoder's own token timings; punctuation stays with the word it follows.
+Phonon-2 gives word timestamps on every engine; Phonon-1's decoder has no
+timings, so for a Phonon-1 server `words` is omitted and a note is printed
+once. `x_fermion` is not in OpenAI's
 schema and is included deliberately: it names the exact decode configuration
 that produced the words, so a result can never be attributed to a
 configuration that did not produce it. Treat its exact keys as informational
@@ -128,6 +141,10 @@ curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
 # Verbose JSON
 curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
   -F file=@clip.flac -F response_format=verbose_json
+
+# Verbose JSON with word timestamps
+curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
+  -F file=@clip.flac -F response_format=verbose_json -F 'timestamp_granularities[]=word'
 ```
 
 OpenAI Python client:

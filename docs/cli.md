@@ -49,7 +49,7 @@ positional arguments:
 | `audio` | Path to an audio file. Anything libsndfile reads: wav, flac, ogg, aiff. Any sample rate and channel count (resampled to 16 kHz mono internally). mp3/m4a are not read; convert first: `ffmpeg -i in.m4a -ar 16000 -ac 1 out.wav`. |
 | `MODEL` | First positional argument: `phonon-2`, `phonon-1`, `phonon-1-big`, `phonon-1-micro`, a repo id or a local model directory. Required. See [Model selection](#model-selection). |
 | `--threads N` | CPU engine threads (default one per physical core from six cores up, every logical cpu on smaller parts, performance cores on Apple silicon); same as `FERMION_CPU_THREADS`. |
-| `--json` | Emit a JSON object instead of bare text: text, timings, per-segment timestamps, `truncated` flag. |
+| `--json` | Emit a JSON object instead of bare text: text, timings, per-segment timestamps, word timestamps, `truncated` flag. |
 | `--verbose` | Print the decode configuration and timings to stderr (decode-only and wall-clock, separately, plus the segment count). |
 | `--download-only` | Fetch and verify the model, print its local directory, then stop without decoding. |
 
@@ -69,11 +69,16 @@ Audio is read from a file path, not from stdin. There is no `-` argument.
 ### `--json` output shape
 
 ```json
-{"text": "...", "model": "FermionResearch/Phonon-2", "profile": "five-value",
+{"text": "The transcript, word by word.", "model": "FermionResearch/Phonon-2", "profile": "five-value",
  "backend": "phonon2-five-value", "engine": "mlx",
  "duration_seconds": 4.2, "decode_seconds": 0.31, "wall_seconds": 2.4,
  "segment_count": 1,
- "segments": [{"id": 0, "start": 0.0, "end": 4.2, "text": "..."}],
+ "segments": [{"id": 0, "start": 0.0, "end": 4.2, "text": "The transcript, word by word."}],
+ "words": [{"text": "The", "start": 0.32, "end": 0.48},
+           {"text": "transcript,", "start": 0.48, "end": 1.04},
+           {"text": "word", "start": 1.12, "end": 1.36},
+           {"text": "by", "start": 1.36, "end": 1.52},
+           {"text": "word.", "start": 1.52, "end": 1.84}],
  "truncated": false}
 ```
 
@@ -84,6 +89,19 @@ one `segments` entry each (start and end in seconds), and the window
 transcripts are joined with single spaces in `text`. `truncated` is true if
 any window used its whole token budget, which means part of that window's
 audio may be missing from the transcript.
+
+### Word timestamps
+
+`words` carries one entry per word with `start` and `end` in seconds from
+the start of the file, on long files too (a word in the fourth window is
+placed where it falls in the whole recording, not in its window). The
+times come from the decoder itself: Phonon-2 emits every token at an
+encoder frame of 80 ms with a predicted duration, so a word starts at its
+first token's frame and ends where its last token's duration ends.
+Punctuation stays with the word it follows (`"transcript,"`), so the word
+texts joined with single spaces are exactly `text`. Phonon-2 gives word
+timestamps on every engine (Apple silicon, and Linux, Windows and macOS
+CPUs). Phonon-1's decoder has no timings; its `words` is `null`.
 
 ### Determinism
 
