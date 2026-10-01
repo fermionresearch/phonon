@@ -36,8 +36,8 @@ What each package is for:
 Then:
 
 ```bash
-fermion models              # shows what is published and what is installed
-fermion transcribe clip.wav # first run downloads the default model (415 MB)
+fermion models                       # shows what is published and what is installed
+fermion transcribe phonon-2 clip.wav # first run downloads Phonon-2 (164 MB)
 ```
 
 ## Linux, Windows and Intel Macs
@@ -47,7 +47,7 @@ run on the CPU:
 
 ```bash
 pip install fermion-research torch safetensors soundfile scipy zstandard
-fermion transcribe recording.wav
+fermion transcribe phonon-2 recording.wav
 ```
 
 On Linux, install torch from its CPU wheel index first (`pip install --no-deps
@@ -56,9 +56,11 @@ above, which adds torch's dependencies from PyPI) to skip the much larger GPU bu
 build; a clean machine may also need Microsoft's `vc_redist.x64.exe` (the
 fix when `import torch` fails with WinError 126). If anything is missing,
 the command prints the exact install line for this platform and exits.
-Container details and CPU usage are in [docs/cpu.md](cpu.md); both
-Docker images also run under Docker Desktop on Windows, and the CPU image
-needs no GPU.
+The CPU engine runs on x86-64 processors with SSE4.1 or newer and on 64-bit Arm processors with NEON; AVX2,
+AVX-512 VNNI and AMX on x86-64, and dotprod and i8mm on Arm, run faster tiers of the same kernels, and processors
+without them (Raspberry Pi 3 and 4, x86-64 parts before AVX2) run a slower baseline tier with the same transcripts.
+`fermion describe` shows the features found and the tier chosen. Container details and CPU usage are in
+[docs/cpu.md](cpu.md); both Docker images also run under Docker Desktop on Windows, and the CPU image needs no GPU.
 
 On Intel Macs and Windows ARM, the speech verbs refuse cleanly, in one
 line, before downloading anything. Everything Neutrino (`fermion chat`,
@@ -107,7 +109,7 @@ cache directory:
 
 ```bash
 # connected machine (the audio argument is not read with --download-only)
-fermion transcribe --download-only unused.wav   # prints the model directory
+fermion transcribe phonon-2 --download-only unused.wav   # prints the model directory
 
 # copy the unpacked tree to the offline machine, preserving the layout:
 #   ~/.cache/fermion/speech/FermionResearch__Phonon-2/model_phonon2_c4c_int6/
@@ -142,7 +144,7 @@ You do not have to use the cache at all: every speech verb accepts a local
 directory directly.
 
 ```bash
-fermion transcribe --model /srv/models/model_v18_mlx_head8audio6_quint5 clip.wav
+fermion transcribe /srv/models/model_v18_mlx_head8audio6_quint5 clip.wav
 ```
 
 Set `HF_HUB_OFFLINE=1` on the offline machine if anything in the environment

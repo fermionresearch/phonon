@@ -46,8 +46,9 @@ https://download.pytorch.org/whl/cpu`, then the install line above, which adds t
 
 ## Threads
 
-The runtime picks its own thread counts: six performance cores on Apple
-silicon, up to sixteen cores elsewhere. There is nothing to configure.
+The engine picks its thread count from the machine: the performance cores on Apple silicon, one thread per
+physical core from six cores up and every logical cpu on smaller parts elsewhere, at most sixteen. `--threads N` on
+`transcribe` and `serve` (or `FERMION_CPU_THREADS=N`) overrides it.
 
 ## Run the container
 
@@ -62,9 +63,9 @@ docker run --rm \
 `serve` exposes the same OpenAI-compatible endpoints as the GPU image
 (`POST /v1/audio/transcriptions`, `GET /v1/audio/stream`, `GET /health`),
 with the same API-key and queue behaviour, so clients written against
-either work unmodified against both. Without `--model-dir` the model is
-downloaded from Hugging Face; `-v /path/to/model:/model … --model-dir
-/model` runs fully offline. On Windows, run the container with Docker
+either work unmodified against both. The model is downloaded from Hugging Face on first run and kept in the
+`phonon-cache` volume; a model directory mounted into the container (`-v /path/to/model:/model … transcribe /model
+/audio/recording.wav`) runs fully offline. On Windows, run the container with Docker
 Desktop; no GPU is required for the CPU image. The image runs on amd64 and arm64; its sources live in
 [docker-cpu-phonon2/](../docker-cpu-phonon2/) (the Phonon-1 CPU image is built from [docker-cpu/](../docker-cpu/)).
 

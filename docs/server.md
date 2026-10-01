@@ -153,7 +153,7 @@ monitoring works without credentials). A speech server answers:
   "status": "ok",
   "model": "FermionResearch/Phonon-2",
   "kind": "speech",
-  "version": "0.2.3",
+  "version": "0.2.5",
   "repo": "FermionResearch/Phonon-2",
   "profile": "five-value",
   "sha256": "…",
@@ -352,9 +352,9 @@ stt.example.com {
 
 ## The CUDA container speaks this API too
 
-The NVIDIA Docker image (`ghcr.io/fermionresearch/phonon-cuda`, see
-[docker/README.md](../docker/README.md)) serves this same API from image
-`0.2.0`: `POST /v1/audio/transcriptions` with the
+The NVIDIA Docker image (`ghcr.io/fermionresearch/phonon-cuda`, `1.0.4` for Phonon-2, see
+[docs/cuda.md](cuda.md) and [docker/README.md](../docker/README.md)) serves this same API (the Phonon-1 image from
+`0.2.0`): `POST /v1/audio/transcriptions` with the
 same multipart shape and error envelope, and `GET /v1/audio/stream` with the
 **identical WebSocket protocol** — same config frame, same
 `partial`/`final`/`done`/`error` events and cadence, same

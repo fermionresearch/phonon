@@ -35,6 +35,11 @@ pip install --no-deps torch --index-url https://download.pytorch.org/whl/cpu   #
 pip install fermion-research torch safetensors soundfile scipy zstandard
 ```
 
+Supported CPUs: x86-64 with SSE4.1 or newer and 64-bit Arm with NEON. AVX2, AVX-512 VNNI and AMX processors, and
+dotprod and i8mm Arm processors, run faster tiers of the same kernels; processors without them run a slower baseline
+tier with the same transcripts. `fermion describe` shows the features found on your machine and the tier it runs;
+[docs/cpu.md](docs/cpu.md) has the detail.
+
 **CPU container (amd64 and arm64)**
 
 ```bash

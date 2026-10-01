@@ -1,15 +1,17 @@
 # CLI reference
 
 The `fermion` command ships in the `fermion-research` pip package
-(version 0.2.3 at the time of writing). The fermion command runs the Phonon speech models and the Neutrino
+(version 0.2.5 at the time of writing). The fermion command runs the Phonon speech models and the Neutrino
 language models from one install. This page covers the speech commands in full and the
 Neutrino commands in brief.
 
 ```
-fermion transcribe   one-shot file transcription (Apple silicon, x86-64 CPU)
+fermion transcribe   one-shot file transcription (Apple silicon; Linux, Windows and macOS CPUs)
 fermion listen       live microphone transcription (Apple silicon)
 fermion serve        OpenAI-compatible HTTP server (speech or LLM)
 fermion models       list published models and what is installed
+fermion describe     this machine's CPU features and the speech kernel tier it runs
+fermion speech bench speed of a speech model on this machine
 fermion chat         Neutrino REPL
 fermion generate     Neutrino one-shot completion
 ```
@@ -26,7 +28,7 @@ detail, speed and memory figures.
 One-shot speech-to-text: an audio file in, a line of text out.
 
 ```bash
-fermion transcribe meeting.wav
+fermion transcribe phonon-2 meeting.wav
 ```
 
 ```
@@ -59,7 +61,7 @@ progress bar, warning and timing goes to stderr. So this writes exactly the
 transcript and nothing else:
 
 ```bash
-fermion transcribe clip.wav > out.txt
+fermion transcribe phonon-2 clip.wav > out.txt
 ```
 
 Audio is read from a file path, not from stdin. There is no `-` argument.
@@ -108,9 +110,9 @@ updates on one terminal line; finalized segments print permanently; Ctrl-C
 stops and prints the full transcript. Added in 0.1.17.
 
 ```bash
-fermion listen
-fermion listen > note.txt      # captures exactly the words spoken
-fermion listen --wav clip.wav  # the same live path, from a file
+fermion listen phonon-2
+fermion listen phonon-2 > note.txt      # captures exactly the words spoken
+fermion listen phonon-2 --wav clip.wav  # the same live path, from a file
 ```
 
 ```
@@ -149,8 +151,8 @@ finals print as plain lines (partials only under `--verbose`).
 - Silence detection is an adaptive energy gate: the louder of an absolute
   room-tone floor and a fraction of the segment's own peak.
 - Every partial and final runs the exact `transcribe` decode
-  (temperature 0.0). On a single-utterance file, `fermion listen --wav f.wav`
-  prints a transcript byte-identical to `fermion transcribe f.wav`.
+  (temperature 0.0). On a single-utterance file, `fermion listen phonon-2 --wav f.wav`
+  prints a transcript byte-identical to `fermion transcribe phonon-2 f.wav`.
 - Before listening starts, one throwaway decode is run to pay the Metal graph
   compile up front, so the first partial lands on cadence rather than
   stalling. `--verbose` prints how long that warm-up took.
@@ -169,7 +171,7 @@ The microphone is opened via `sounddevice` (installed transitively by
 message. On macOS the usual cause is that your terminal application has no
 microphone permission: grant it under
 **System Settings, Privacy & Security, Microphone**, then retry.
-`fermion listen --wav file.wav` runs the same live path without a microphone.
+`fermion listen phonon-2 --wav file.wav` runs the same live path without a microphone.
 
 ---
 
@@ -224,6 +226,32 @@ published sampler config (temp 0.01, top-p 1.0, rep-pen 1.05, window
 `--yarn-factor`, `--yarn-orig-max`, `--draft`, `--max-new`, `--temperature`,
 `--top-p`, `--rep-penalty`, `--pen-window`). See `fermion serve --help` and
 the package README for the full story.
+
+---
+
+## fermion describe
+
+What this machine is and which Phonon-2 CPU kernel tier it runs (added in 0.2.5). Nothing is downloaded and no model
+is loaded. `phonon describe` and `phonon --describe` print the same report.
+
+```bash
+fermion describe
+fermion describe --json
+```
+
+```
+usage: fermion describe [-h] [--json] [--no-load]
+
+options:
+  --json      emit one JSON object
+  --no-load   do not open the selected kernel library for its own report
+```
+
+The report names the host, the processor features the engine found (dotprod, i8mm and SVE on Arm; SSE4.1, AVX2,
+AVX-512 BW and VNNI, AMX on x86-64), how they were read, the tier chosen (`i8mm`, `dotprod` or `neon` on Arm; `amx`,
+`avx512-vnni`, `avx512bw`, `avx2`, `sse4.1` or `scalar` on x86-64) and the kernel binaries that tier loads. Processors
+without dotprod or AVX2 run the baseline tier, which gives the same transcripts and is slower; [docs/cpu.md](cpu.md)
+has the supported-CPU list.
 
 ---
 
@@ -299,6 +327,7 @@ phonon: the fermion CLI with the model fixed to phonon-2.
   phonon listen
   phonon serve [--port 8000] [--unix-socket PATH]
   phonon bench --audio clip.wav
+  phonon describe
 
 Everything after the verb is passed to `fermion <verb> phonon-2`; `phonon <verb> -h` shows that verb's options.
 ```
@@ -322,7 +351,7 @@ On first use of a model, the CLI:
    (`~/.cache/huggingface/hub` by default).
 
 Later runs load from the cache with no network access.
-`fermion transcribe --download-only clip-not-needed` fetches and verifies
+`fermion transcribe phonon-2 --download-only clip-not-needed` fetches and verifies
 without decoding, and prints the model directory.
 
 Two environment variables move the caches:
