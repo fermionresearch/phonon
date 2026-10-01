@@ -16,7 +16,9 @@ RUN apt-get update -q && apt-get install -y -q --no-install-recommends gcc pytho
 
 RUN useradd --create-home --uid 1001 phonon \
     && printf '#!/bin/sh\nexec python /opt/phonon/entrypoint.py "$@"\n' > /usr/local/bin/phonon-cuda \
-    && chmod 0755 /usr/local/bin/phonon-cuda
+    && chmod 0755 /usr/local/bin/phonon-cuda \
+    && mkdir -p /home/phonon/.cache/huggingface && chown -R phonon:phonon /home/phonon
+VOLUME ["/home/phonon/.cache"]
 
 COPY phonon2_cuda_engine.py fermion_container.py _archive.py _multipart.py _ws.py _live.py entrypoint.py /opt/phonon/
 
