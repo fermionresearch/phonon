@@ -55,7 +55,7 @@ silicon, up to sixteen cores elsewhere. There is nothing to configure.
 docker run --rm \
   -v /path/to/audio:/audio \
   -v phonon-cache:/home/phonon/.cache \
-  ghcr.io/fermionresearch/phonon-cpu:2.0.3 \
+  ghcr.io/fermionresearch/phonon-cpu:2.0.4 \
   transcribe phonon-2 /audio/recording.wav
 ```
 

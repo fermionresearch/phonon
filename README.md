@@ -38,7 +38,7 @@ pip install fermion-research torch safetensors soundfile scipy zstandard
 **CPU container (amd64 and arm64)**
 
 ```bash
-docker run --rm -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cpu:2.0.3 transcribe phonon-2 /audio/recording.wav
+docker run --rm -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cpu:2.0.4 transcribe phonon-2 /audio/recording.wav
 ```
 
 **NVIDIA CUDA container**
