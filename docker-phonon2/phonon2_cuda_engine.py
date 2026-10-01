@@ -74,16 +74,20 @@ def _is_punctuation(piece: str) -> bool:
     return bool(piece) and not any(ch.isalnum() for ch in piece)
 
 
-def words_from_tokens(tokens, offset: float = 0.0) -> list:
+def words_from_tokens(tokens, offset: float = 0.0, limit=None) -> list:
     """Merge `(piece, start, duration)` decoder tokens into `{text, start, end}` words: a piece with a leading space starts a
     word, a punctuation-only piece attaches to the word before it, times are shifted by `offset` and rounded to the
-    millisecond.  The same rule as the pip package (fermion/_speech/segment.py), so every surface agrees."""
+    millisecond; `limit` (the segment's length in seconds) caps an end at the audio, since the last token's predicted
+    duration can run one 80 ms frame past it.  The same rule as the pip package (fermion/_speech/segment.py)."""
     words: list = []; cur: list = []
     def flush():
         if cur:
             text = "".join(t[0] for t in cur).strip()
             if text:
-                words.append({"text": text, "start": round(cur[0][1] + offset, 3), "end": round(cur[-1][1] + cur[-1][2] + offset, 3)})
+                end = cur[-1][1] + cur[-1][2]
+                if limit is not None:
+                    end = min(end, limit)
+                words.append({"text": text, "start": round(cur[0][1] + offset, 3), "end": round(max(end, cur[0][1]) + offset, 3)})
             cur.clear()
     for tok in tokens:
         piece, start, duration = str(tok[0]), float(tok[1]), float(tok[2])
@@ -406,7 +410,7 @@ class Transcriber:
         n = len(wav)
         if n / SAMPLE_RATE <= MAX_SECONDS:
             text, toks = self.segment_decode_timed(wav, lock)
-            return text, [{"id": 0, "start": 0.0, "end": round(n / SAMPLE_RATE, 3), "text": text}], words_from_tokens(toks, 0.0)
+            return text, [{"id": 0, "start": 0.0, "end": round(n / SAMPLE_RATE, 3), "text": text}], words_from_tokens(toks, 0.0, n / SAMPLE_RATE)
         from _live import LiveSession
         stash: list = []; offsets: list = []
         def decode(audio):
@@ -420,7 +424,7 @@ class Transcriber:
         for idx, ((start, length, seg_text), toks) in enumerate(zip(offsets, stash)):
             off = start / SAMPLE_RATE
             segments.append({"id": idx, "start": round(off, 3), "end": round((start + length) / SAMPLE_RATE, 3), "text": seg_text})
-            words.extend(words_from_tokens(toks, off))
+            words.extend(words_from_tokens(toks, off, length / SAMPLE_RATE))
         return text, segments, words
 
     def describe(self) -> dict:
