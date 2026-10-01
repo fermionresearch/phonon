@@ -1,5 +1,9 @@
 # Phonon-1 CUDA Docker image
 
+This is the Phonon-1 family image, tags `0.1.0-preview`, `0.2.0` and `0.3.0`. The current CUDA image,
+`ghcr.io/fermionresearch/phonon-cuda:1.0.4` (also `latest`), runs Phonon-2 and is documented in
+[docs/cuda.md](../docs/cuda.md); the run lines below do not apply to it.
+
 Runs [Phonon-1](https://huggingface.co/FermionResearch/Phonon-1),
 [Phonon-1 Big](https://huggingface.co/FermionResearch/Phonon-1-Big) (the
 default) and
@@ -34,14 +38,14 @@ Container Toolkit.
 - **`0.1.0-preview`** — the first release: single utterances up to 30 s,
   `transcribe` + `serve` with `POST /v1/audio/transcriptions`.
 
-`latest` tracks the newest release.
+`latest` is the Phonon-2 image (`1.0.4`); pin `0.3.0` for the Phonon-1 family.
 
 ## Transcribe files
 
 ```sh
 docker run --rm --gpus all \
   -v /path/to/Phonon-1-Big:/model -v /path/to/audio:/audio \
-  ghcr.io/fermionresearch/phonon-cuda:latest \
+  ghcr.io/fermionresearch/phonon-cuda:0.3.0 \
   transcribe /audio/recording.wav --model-dir /model
 ```
 
@@ -63,7 +67,7 @@ refused with an actionable message — no unvalidated fallback paths.
 ```sh
 docker run --rm --gpus all -p 127.0.0.1:8000:8000 \
   -v /path/to/Phonon-1-Big:/model \
-  ghcr.io/fermionresearch/phonon-cuda:latest \
+  ghcr.io/fermionresearch/phonon-cuda:0.3.0 \
   serve --host 0.0.0.0 --port 8000 --api-key change-me --model-dir /model
 ```
 
