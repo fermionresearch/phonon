@@ -18,9 +18,10 @@ outside the envelope is refused with an actionable message.
 
 ```sh
 pip install fermion-research
-fermion transcribe recording.wav                       # Phonon-1
-fermion transcribe recording.wav --model phonon-1-big
-fermion transcribe recording.wav --model phonon-1-micro
+fermion transcribe phonon-2 recording.wav
+fermion transcribe phonon-1 recording.wav
+fermion transcribe phonon-1-big recording.wav
+fermion transcribe phonon-1-micro recording.wav
 ```
 
 On a machine that still needs the CPU speech runtime, `fermion transcribe`
@@ -36,31 +37,33 @@ pip install fermion-research torch safetensors soundfile scipy zstandard
 The plain torch wheel is already the CPU build there; a clean Windows
 machine may also need Microsoft's `vc_redist.x64.exe` (the fix when
 `import torch` fails with WinError 126). On Linux, installing torch from
-its CPU wheel index (`pip install torch --index-url
-https://download.pytorch.org/whl/cpu`) skips the much larger GPU build.
+its CPU wheel index (`pip install --no-deps torch --index-url
+https://download.pytorch.org/whl/cpu`, then the install line above, which adds torch's dependencies from PyPI) skips the much larger GPU build.
 
 ## Threads
 
-The runtime picks its own thread counts: six performance cores on Apple
-silicon, up to sixteen cores elsewhere. There is nothing to configure.
+The engine picks its thread count from the machine: the performance cores on Apple silicon, one thread per
+physical core from six cores up and every logical cpu on smaller parts elsewhere, at most sixteen. `--threads N` on
+`transcribe` and `serve` (or `FERMION_CPU_THREADS=N`) overrides it.
 
 ## Run the container
 
 ```sh
 docker run --rm \
   -v /path/to/audio:/audio \
-  ghcr.io/fermionresearch/phonon-cpu:latest \
-  transcribe /audio/recording.wav
+  -v phonon-cache:/home/phonon/.cache \
+  ghcr.io/fermionresearch/phonon-cpu:2.0.6 \
+  transcribe phonon-2 /audio/recording.wav
 ```
 
 `serve` exposes the same OpenAI-compatible endpoints as the GPU image
 (`POST /v1/audio/transcriptions`, `GET /v1/audio/stream`, `GET /health`),
 with the same API-key and queue behaviour, so clients written against
-either work unmodified against both. Without `--model-dir` the model is
-downloaded from Hugging Face; `-v /path/to/model:/model … --model-dir
-/model` runs fully offline. On Windows, run the container with Docker
-Desktop; no GPU is required for the CPU image. The container sources live in
-[docker-cpu/](../docker-cpu/).
+either work unmodified against both. The model is downloaded from Hugging Face on first run and kept in the
+`phonon-cache` volume; a model directory mounted into the container (`-v /path/to/model:/model … transcribe /model
+/audio/recording.wav`) runs fully offline. On Windows, run the container with Docker
+Desktop; no GPU is required for the CPU image. The image runs on amd64 and arm64; its sources live in
+[docker-cpu-phonon2/](../docker-cpu-phonon2/) (the Phonon-1 CPU image is built from [docker-cpu/](../docker-cpu/)).
 
 ## Verify an install
 

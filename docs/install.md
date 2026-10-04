@@ -36,23 +36,23 @@ What each package is for:
 Then:
 
 ```bash
-fermion models              # shows what is published and what is installed
-fermion transcribe clip.wav # first run downloads the default model (415 MB)
+fermion models                       # shows what is published and what is installed
+fermion transcribe phonon-2 clip.wav # first run downloads Phonon-2 (164 MB)
 ```
 
 ## Linux, Windows and Intel Macs
 
-On Linux (x86-64 and 64-bit ARM) and x86-64 Windows, the speech verbs
+On Linux (x86-64 and 64-bit ARM), x86-64 Windows and Intel Macs, the speech verbs
 run on the CPU:
 
 ```bash
 pip install fermion-research torch safetensors soundfile scipy zstandard
-fermion transcribe recording.wav
+fermion transcribe phonon-2 recording.wav
 ```
 
-On Linux, install torch from its CPU wheel index first (`pip install
-torch --index-url https://download.pytorch.org/whl/cpu`) to skip the much
-larger GPU build. On Windows the plain torch wheel already is the CPU
+On Linux, install torch from its CPU wheel index first (`pip install --no-deps
+torch --index-url https://download.pytorch.org/whl/cpu`, then the install line
+above, which adds torch's dependencies from PyPI) to skip the much larger GPU build. On Windows the plain torch wheel already is the CPU
 build; a clean machine may also need Microsoft's `vc_redist.x64.exe` (the
 fix when `import torch` fails with WinError 126). If anything is missing,
 the command prints the exact install line for this platform and exits.
@@ -71,8 +71,21 @@ command says so in one line.
 On Windows ARM, the speech verbs refuse cleanly, in one
 line, before downloading anything. Everything Neutrino (`fermion chat`,
 `fermion generate`, `fermion serve` with a language model,
-`fermion models`) works on these platforms as normal. For running Phonon on
+`fermion models`) works on every platform as normal. For running Phonon on
 NVIDIA GPUs, see [docs/cuda.md](cuda.md).
+
+Python 3.10 through 3.14 are supported on x86-64 and Arm Linux (the `python:3.10-slim` to
+`python:3.14-slim` images all install and transcribe). The CPU engine reads audio through
+libsndfile; on Alpine or any musl-based image the command refuses before downloading anything:
+
+```
+audio files cannot be read: soundfile could not load libsndfile. Install the system library and retry:
+    apk add libsndfile   (Alpine / musl: the manylinux wheel bundles libsndfile, the musl wheel does not)
+    [OSError: cannot load library 'libsndfile.so': Error loading shared library libsndfile.so: No such file or directory]
+```
+
+On glibc systems without the library the same message names `sudo apt install libsndfile1`
+(or the distribution's equivalent).
 
 ## Air-gapped / offline install
 
@@ -102,10 +115,10 @@ cache directory:
 
 ```bash
 # connected machine (the audio argument is not read with --download-only)
-fermion transcribe --download-only unused.wav   # prints the model directory
+fermion transcribe phonon-2 --download-only unused.wav   # prints the model directory
 
 # copy the unpacked tree to the offline machine, preserving the layout:
-#   ~/.cache/fermion/speech/FermionResearch__Phonon-1/model_v18_mlx_head8audio6_quint5/
+#   ~/.cache/fermion/speech/FermionResearch__Phonon-2/model_phonon2_c4c_int6/
 ```
 
 The cache layout the CLI reads is:
@@ -117,12 +130,12 @@ The cache layout the CLI reads is:
 - `<cache root>` is `~/.cache/fermion` by default, or `$FERMION_CACHE_DIR`
   if set.
 - `<Org__Repo>` is the repo id with `/` replaced by `__`, for example
-  `FermionResearch__Phonon-1`.
-- `<unpack_dir>` is the model's historical directory name:
-  `model_v18_mlx_head8audio6_quint5` for Phonon-1,
-  `model_v18_mlx_quint5` and `model_v18_mlx_hybrid4_quint5` for the other
-  two published models (`fermion models --json` prints each model's exact
-  expected path on your machine).
+  `FermionResearch__Phonon-2`.
+- `<unpack_dir>` is the model's directory name:
+  `model_phonon2_c4c_int6` for Phonon-2, `model_v18_mlx_head8audio6_quint5`
+  for Phonon-1, `model_v18_mlx_quint5` and `model_v18_mlx_hybrid4_quint5` for
+  Phonon-1 Big and Phonon-1 Micro (`fermion models --json` prints each model's
+  exact expected path on your machine).
 - A directory is treated as installed when `config.json` and
   `packed_manifest.json` exist side by side inside it.
 
@@ -136,7 +149,7 @@ You do not have to use the cache at all: every speech verb accepts a local
 directory directly.
 
 ```bash
-fermion transcribe --model /srv/models/model_v18_mlx_head8audio6_quint5 clip.wav
+fermion transcribe /srv/models/model_v18_mlx_head8audio6_quint5 clip.wav
 ```
 
 Set `HF_HUB_OFFLINE=1` on the offline machine if anything in the environment
@@ -146,7 +159,8 @@ still tries to reach the Hugging Face Hub.
 
 | Model | Download | Unpacked on disk | Peak during install |
 |---|---|---|---|
-| `FermionResearch/Phonon-1` (default) | 415 MB | 455 MB | ~870 MB |
+| `FermionResearch/Phonon-2` | 164 MB | 178 MB | ~342 MB |
+| `FermionResearch/Phonon-1` | 415 MB | 455 MB | ~870 MB |
 | `FermionResearch/Phonon-1-Micro` | 285 MB | 331 MB | ~616 MB |
 | `FermionResearch/Phonon-1-Big` | 581 MB | 822 MB | ~1.4 GB |
 

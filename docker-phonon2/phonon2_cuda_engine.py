@@ -63,6 +63,34 @@ def mel_filters(sr=SAMPLE_RATE, n_fft=N_FFT, n_mels=N_MELS):
     return w.astype(np.float32)
 
 
+def _is_punctuation(piece: str) -> bool:
+    return bool(piece) and not any(ch.isalnum() for ch in piece)
+
+
+def words_from_tokens(tokens, offset: float = 0.0, limit=None) -> list:
+    """Merge `(piece, start, duration)` decoder tokens into `{text, start, end}` words: a piece with a leading space starts a
+    word, a punctuation-only piece attaches to the word before it, times are shifted by `offset` and rounded to the
+    millisecond; `limit` (the segment's length in seconds) caps an end at the audio, since the last token's predicted
+    duration can run one 80 ms frame past it.  The same rule as the pip package (fermion/_speech/segment.py)."""
+    words: list = []; cur: list = []
+    def flush():
+        if cur:
+            text = "".join(t[0] for t in cur).strip()
+            if text:
+                end = cur[-1][1] + cur[-1][2]
+                if limit is not None:
+                    end = min(end, limit)
+                words.append({"text": text, "start": round(cur[0][1] + offset, 3), "end": round(max(end, cur[0][1]) + offset, 3)})
+            cur.clear()
+    for tok in tokens:
+        piece, start, duration = str(tok[0]), float(tok[1]), float(tok[2])
+        if piece.startswith(" ") and cur and (not piece.strip() or not _is_punctuation(piece.strip())):   # a bare marker starts the next word
+            flush()
+        cur.append((piece, start, duration))
+    flush()
+    return words
+
+
 def _special(piece: str) -> bool:
     return (piece.startswith("<|") and piece.endswith("|>")) or piece in ("<unk>", "<pad>")
 
@@ -124,6 +152,10 @@ class Transcriber:
         self.window = torch.hann_window(WIN, periodic=False, device="cuda")
         self.melf = torch.from_numpy(mel_filters()).cuda()
         self.graphs = {}
+        # hotwords (hotwords.py, shared with the pip engines): a separate captured graph per (Tcap, state bucket, piece
+        # bucket) runs the biased step; with no hotwords the graphs above run, unchanged.
+        from hotwords import HotwordState
+        self.hw = HotwordState(); self.graphs_b = {}; self._hw_cache = {}
         self.device_name = torch.cuda.get_device_name(0)
         self.load_s = time.perf_counter() - started
         # warm-up (PHONON2_CUDA_WARMUP=all, default): run one silent clip per padded bucket up to the 30 s segment length, so
@@ -193,8 +225,122 @@ class Transcriber:
         hit = (dur == 0) & (nsym_n >= self.max_sym)
         dur = torch.where(hit, torch.ones_like(dur), dur); nsym_n = torch.where(hit, torch.zeros_like(nsym_n), nsym_n)
         last_n = torch.where(emit, tok, last); e3 = emit[None, :, None]
+        # the frame this step read (t) and the predicted duration (dur) are returned beside the token so the server can
+        # place every word in time.
         return (torch.where(emit, tok, torch.full_like(tok, -1)), torch.where(active, t + dur, t), last_n,
-                torch.where(e3, h2, h), torch.where(e3, c2, cc), torch.where(active, nsym_n, nsym))
+                torch.where(e3, h2, h), torch.where(e3, c2, cc), torch.where(active, nsym_n, nsym), t, dur)
+
+    def _step_b(self, encp, t, last, h, cc, nsym, lens, T, bstate, table, toks, col, depth, lam):
+        """_step with hotword biasing: tokens that continue a listed word get a bonus of `lam` (blank is never biased)."""
+        torch = self.torch; m = self.model
+        emb = m.decoder.embedding(last)
+        out, h2, c2 = self._lstm(emb, h, cc)
+        dec = m.decoder.decoder_projector(out)
+        f = encp[0, torch.clamp(t, max=T - 1)]
+        logits = m.joint.head(m.joint.activation(f + dec))
+        row, bias = self._hot_bias(bstate, table, toks, depth, lam)
+        tok = (logits[:, :self.V].float() + bias).argmax(-1); dur = self.durations[logits[:, self.V:].argmax(-1)]
+        active = t < lens; is_blank = tok == self.blank
+        dur = torch.where(is_blank & (dur == 0), torch.ones_like(dur), dur)
+        emit = active & ~is_blank
+        nsym_n = torch.where(dur == 0, nsym + 1, torch.zeros_like(nsym))
+        hit = (dur == 0) & (nsym_n >= self.max_sym)
+        dur = torch.where(hit, torch.ones_like(dur), dur); nsym_n = torch.where(hit, torch.zeros_like(nsym_n), nsym_n)
+        last_n = torch.where(emit, tok, last); e3 = emit[None, :, None]
+        bstate_n = torch.where(emit, self._hot_next(row, col, tok, bstate), bstate)
+        return (torch.where(emit, tok, torch.full_like(tok, -1)), torch.where(active, t + dur, t), last_n,
+                torch.where(e3, h2, h), torch.where(e3, c2, cc), torch.where(active, nsym_n, nsym), t, dur, bstate_n)
+
+    def _hot_bias(self, bstate, table, toks, depth, lam):
+        """(row, bias): the automaton row of the current state (1, Kcap) and the (1, V) float32 bonus on the token logits."""
+        torch = self.torch
+        row = table[bstate]                                                    # (1, Kcap) next state per piece
+        gain = (depth[row] - depth[bstate][:, None]).float().clamp(min=0) * lam  # (1, Kcap); bonus only
+        bias = torch.zeros((1, self.V + 1), device=row.device, dtype=torch.float32)
+        bias.index_add_(1, toks, gain)                                         # slot V = the padded columns' sink
+        return row, bias[:, :self.V]
+
+    def _hot_next(self, row, col, tok, bstate):
+        torch = self.torch
+        k = col[tok]
+        return torch.where(k >= 0, row.gather(1, k.clamp(min=0)[:, None])[:, 0], torch.zeros_like(bstate))
+
+    @staticmethod
+    def _cap(n: int, lo: int = 64) -> int:
+        c = lo
+        while c < n:
+            c *= 2
+        return c
+
+    def _graph_for_b(self, Tcap, Scap, Kcap):
+        torch = self.torch
+        key = (Tcap, Scap, Kcap)
+        if key in self.graphs_b:
+            return self.graphs_b[key]
+        K = self.K
+        S = {"encp": torch.zeros(1, Tcap, self.H, device="cuda", dtype=self.dtype), "lens": torch.zeros(1, dtype=torch.long, device="cuda"),
+             "t": torch.zeros(1, dtype=torch.long, device="cuda"), "last": torch.full((1,), self.blank, dtype=torch.long, device="cuda"),
+             "h": torch.zeros(self.L, 1, self.H, device="cuda", dtype=self.dtype), "c": torch.zeros(self.L, 1, self.H, device="cuda", dtype=self.dtype),
+             "nsym": torch.zeros(1, dtype=torch.long, device="cuda"), "toks": torch.full((K, 1), -1, dtype=torch.long, device="cuda"),
+             "frames": torch.zeros((K, 1), dtype=torch.long, device="cuda"), "durs": torch.zeros((K, 1), dtype=torch.long, device="cuda"),
+             "active": torch.zeros((), dtype=torch.bool, device="cuda"),
+             "bstate": torch.zeros(1, dtype=torch.long, device="cuda"), "table": torch.zeros((Scap, Kcap), dtype=torch.long, device="cuda"),
+             "ptoks": torch.full((Kcap,), self.V, dtype=torch.long, device="cuda"), "col": torch.full((self.V,), -1, dtype=torch.long, device="cuda"),
+             "depth": torch.zeros(Scap, dtype=torch.long, device="cuda"), "lam": torch.zeros((), dtype=torch.float32, device="cuda")}
+
+        def block():
+            t, last, h, cc, nsym, bs = S["t"], S["last"], S["h"], S["c"], S["nsym"], S["bstate"]
+            for k in range(K):
+                tok_out, t, last, h, cc, nsym, t_at, dur, bs = self._step_b(S["encp"], t, last, h, cc, nsym, S["lens"], Tcap, bs,
+                                                                             S["table"], S["ptoks"], S["col"], S["depth"], S["lam"])
+                S["toks"][k].copy_(tok_out); S["frames"][k].copy_(t_at); S["durs"][k].copy_(dur)
+            S["t"].copy_(t); S["last"].copy_(last); S["h"].copy_(h); S["c"].copy_(cc); S["nsym"].copy_(nsym); S["bstate"].copy_(bs)
+            S["active"].copy_((t < S["lens"]).any())
+        s = torch.cuda.Stream(); s.wait_stream(torch.cuda.current_stream())
+        with torch.cuda.stream(s), torch.inference_mode():
+            for _ in range(2):
+                block()
+        torch.cuda.current_stream().wait_stream(s)
+        g = torch.cuda.CUDAGraph()
+        with torch.cuda.graph(g), torch.inference_mode():
+            block()
+        self.graphs_b[key] = (g, S)
+        return self.graphs_b[key]
+
+    def _arm(self, S, auto) -> None:
+        torch = self.torch
+        Sn, Kn = auto.table.shape
+        S["table"].zero_(); S["table"][:Sn, :Kn].copy_(torch.from_numpy(auto.table.astype(np.int64)))
+        S["ptoks"].fill_(self.V); S["ptoks"][:Kn].copy_(torch.from_numpy(auto.toks.astype(np.int64)))
+        S["col"].copy_(torch.from_numpy(auto.col[: self.V].astype(np.int64)))
+        S["depth"].zero_(); S["depth"][:Sn].copy_(torch.from_numpy(auto.depth.astype(np.int64)))
+        S["lam"].fill_(float(auto.lam)); S["bstate"].zero_()
+
+    # ---- hotwords ------------------------------------------------------------------------------------------------
+    def set_hotwords(self, words, lam=None) -> int:
+        """The engine's own hotword list ([] = off); returns how many words are active (at most hotwords.MAX_WORDS)."""
+        n, given = self.hw.set(words, lam)
+        if given > n:
+            log(f"note: {given} hotwords given; the first {n} are used")
+        return n
+
+    def _automaton(self, hotwords=None, hotword_lambda=None):
+        """The automaton for one call: the engine's own list when both are None, else this call's (not stored)."""
+        if hotwords is None and hotword_lambda is None:
+            return self.hw.automaton(self.vocab)
+        from hotwords import HotwordState, clean_words
+        words = self.hw.words if hotwords is None else hotwords
+        lam = self.hw.lam if hotword_lambda is None else hotword_lambda
+        key = (repr(clean_words(words)[0]), float(lam))
+        st = self._hw_cache.get(key)
+        if st is None:
+            st = HotwordState(); n, given = st.set(words, lam)
+            if given > n:
+                log(f"note: {given} hotwords given; the first {n} are used")
+            if len(self._hw_cache) > 64:
+                self._hw_cache.clear()
+            self._hw_cache[key] = st
+        return st.automaton(self.vocab)
 
     def _graph_for(self, Tcap):
         torch = self.torch
@@ -205,13 +351,14 @@ class Transcriber:
              "t": torch.zeros(1, dtype=torch.long, device="cuda"), "last": torch.full((1,), self.blank, dtype=torch.long, device="cuda"),
              "h": torch.zeros(self.L, 1, self.H, device="cuda", dtype=self.dtype), "c": torch.zeros(self.L, 1, self.H, device="cuda", dtype=self.dtype),
              "nsym": torch.zeros(1, dtype=torch.long, device="cuda"), "toks": torch.full((K, 1), -1, dtype=torch.long, device="cuda"),
+             "frames": torch.zeros((K, 1), dtype=torch.long, device="cuda"), "durs": torch.zeros((K, 1), dtype=torch.long, device="cuda"),
              "active": torch.zeros((), dtype=torch.bool, device="cuda")}
 
         def block():
             t, last, h, cc, nsym = S["t"], S["last"], S["h"], S["c"], S["nsym"]
             for k in range(K):
-                tok_out, t, last, h, cc, nsym = self._step(S["encp"], t, last, h, cc, nsym, S["lens"], Tcap)
-                S["toks"][k].copy_(tok_out)
+                tok_out, t, last, h, cc, nsym, t_at, dur = self._step(S["encp"], t, last, h, cc, nsym, S["lens"], Tcap)
+                S["toks"][k].copy_(tok_out); S["frames"][k].copy_(t_at); S["durs"][k].copy_(dur)
             S["t"].copy_(t); S["last"].copy_(last); S["h"].copy_(h); S["c"].copy_(cc); S["nsym"].copy_(nsym)
             S["active"].copy_((t < S["lens"]).any())
         s = torch.cuda.Stream(); s.wait_stream(torch.cuda.current_stream())
@@ -225,49 +372,89 @@ class Transcriber:
         self.graphs[Tcap] = (g, S)
         return self.graphs[Tcap]
 
-    def transcribe(self, wav) -> str:
-        """One greedy decode of <= 30 s of audio (the segment envelope)."""
+    #: seconds per encoder frame = subsampling 8 x hop 160 at 16 kHz
+    _SUB, _HOP = 8, 160
+
+    def transcribe(self, wav, hotwords=None, hotword_lambda=None) -> str:
+        """One greedy decode of <= 30 s of audio."""
+        return self.transcribe_timed(wav, hotwords, hotword_lambda)[0]
+
+    def transcribe_timed(self, wav, hotwords=None, hotword_lambda=None, *, _auto=False):
+        """(text, tokens): the text exactly as `transcribe` builds it, plus `(piece, start_s, duration_s)` per emitted token
+        from the decoder's own frame index and predicted duration, relative to the start of `wav`.  `hotwords` /
+        `hotword_lambda` apply to this call (None = the engine's own `set_hotwords` list; [] = none)."""
         torch = self.torch; m = self.model
+        auto = self._automaton(hotwords, hotword_lambda) if _auto is False else _auto
         wav = np.asarray(wav, dtype=np.float32)
         with torch.inference_mode():
             feats, am = self._features(wav)
             enc = m.encoder(input_features=feats, attention_mask=am).last_hidden_state
             T = int(m._get_subsampling_output_length(am.sum(-1))[0]); encp = m.encoder_projector(enc)
             Tcap = ((encp.shape[1] + 63) // 64) * 64
-            g, S = self._graph_for(Tcap)
+            if auto is None:
+                g, S = self._graph_for(Tcap)
+            else:
+                g, S = self._graph_for_b(Tcap, self._cap(auto.table.shape[0]), self._cap(auto.table.shape[1]))
+                self._arm(S, auto)
             S["encp"].zero_(); S["encp"][:, :encp.shape[1]].copy_(encp); S["lens"].fill_(T)
             S["t"].zero_(); S["last"].fill_(self.blank); S["h"].zero_(); S["c"].zero_(); S["nsym"].zero_()
-            toks = []; it = 0; max_iters = self.max_sym * T + 16
+            toks = []; frs = []; dus = []; it = 0; max_iters = self.max_sym * T + 16
             while it < max_iters:
-                g.replay(); toks.append(S["toks"].clone()); it += self.K
+                g.replay(); toks.append(S["toks"].clone()); frs.append(S["frames"].clone()); dus.append(S["durs"].clone()); it += self.K
                 if not bool(S["active"]):
                     break
-            ids = [int(x) for x in torch.cat(toks, 0)[:, 0].cpu().numpy() if x >= 0]
-        return "".join(self.vocab[i] for i in ids if i < len(self.vocab) and not _special(self.vocab[i])).replace("▁", " ").strip()
+            all_t = torch.cat(toks, 0)[:, 0].cpu().numpy(); all_f = torch.cat(frs, 0)[:, 0].cpu().numpy(); all_d = torch.cat(dus, 0)[:, 0].cpu().numpy()
+            keep = all_t >= 0
+            ids = [int(x) for x in all_t[keep]]; frames = [int(x) for x in all_f[keep]]; durs = [int(x) for x in all_d[keep]]
+        text = "".join(self.vocab[i] for i in ids if i < len(self.vocab) and not _special(self.vocab[i])).replace("▁", " ").strip()
+        tokens = [(self.vocab[i].replace("▁", " "), fr * self._SUB / SAMPLE_RATE * self._HOP, du * self._SUB / SAMPLE_RATE * self._HOP)
+                  for i, fr, du in zip(ids, frames, durs) if i < len(self.vocab) and not _special(self.vocab[i])]
+        return text, tokens
 
-    # ---- the 0.3.0 contract -------------------------------------------------------------------------------------
-    def segment_decode(self, wav, lock: threading.Lock | None = None) -> str:
+    # ---- the server-facing contract -----------------------------------------------------------------------------
+    def segment_decode(self, wav, lock: threading.Lock | None = None, hotwords=None, hotword_lambda=None) -> str:
+        return self.segment_decode_timed(wav, lock, hotwords, hotword_lambda)[0]
+
+    def segment_decode_timed(self, wav, lock: threading.Lock | None = None, hotwords=None, hotword_lambda=None, *, _auto=False):
         if wav.size == 0 or float(np.max(np.abs(wav))) < 1e-4:
-            return ""
+            return "", []
         if lock is None:
-            return self.transcribe(wav)
+            return self.transcribe_timed(wav, hotwords, hotword_lambda, _auto=_auto)
         with lock:
-            return self.transcribe(wav)
+            return self.transcribe_timed(wav, hotwords, hotword_lambda, _auto=_auto)
 
     def session(self, *, partials: bool, on_partial=None, on_final=None, lock: threading.Lock | None = None):
         from _live import LiveSession
         return LiveSession(lambda wav: self.segment_decode(wav, lock), on_partial=on_partial, on_final=on_final, partials=partials)
 
-    def transcribe_long(self, wav, *, lock: threading.Lock | None = None, on_final=None) -> tuple[str, int]:
-        if len(wav) / SAMPLE_RATE <= MAX_SECONDS:
-            if lock is None:
-                return self.transcribe(wav), 1
-            with lock:
-                return self.transcribe(wav), 1
-        session = self.session(partials=False, on_final=on_final, lock=lock)
+    def transcribe_long(self, wav, *, lock: threading.Lock | None = None, on_final=None, hotwords=None, hotword_lambda=None) -> tuple[str, int]:
+        text, segments, _words = self.transcribe_long_timed(wav, lock=lock, on_final=on_final, hotwords=hotwords, hotword_lambda=hotword_lambda)
+        return text, len(segments)
+
+    def transcribe_long_timed(self, wav, *, lock: threading.Lock | None = None, on_final=None, hotwords=None, hotword_lambda=None):
+        """(text, segments, words): `segments` = one {id, start, end, text} per decoded piece of audio (the whole file up to
+        30 s, else the live session's pause-cut segments), `words` = one {text, start, end} per word in seconds from the
+        start of the file (words_from_tokens, offsets from the session).  `text` is exactly `transcribe_long`'s."""
+        n = len(wav)
+        auto = self._automaton(hotwords, hotword_lambda)          # one automaton for every segment of this call
+        if n / SAMPLE_RATE <= MAX_SECONDS:
+            text, toks = self.segment_decode_timed(wav, lock, _auto=auto)
+            return text, [{"id": 0, "start": 0.0, "end": round(n / SAMPLE_RATE, 3), "text": text}], words_from_tokens(toks, 0.0, n / SAMPLE_RATE)
+        from _live import LiveSession
+        stash: list = []; offsets: list = []
+        def decode(audio):
+            text, toks = self.segment_decode_timed(audio, lock, _auto=auto); stash.append(toks); return text
+        def on_segment(text, start_sample, length):
+            offsets.append((start_sample, length, text))
+        session = LiveSession(decode, on_final=on_final, partials=False, on_segment=on_segment)
         session.feed_pcm(wav)
         text = session.finish()
-        return text, len(session.finals)
+        segments = []; words = []
+        for idx, ((start, length, seg_text), toks) in enumerate(zip(offsets, stash)):
+            off = start / SAMPLE_RATE
+            segments.append({"id": idx, "start": round(off, 3), "end": round((start + length) / SAMPLE_RATE, 3), "text": seg_text})
+            words.extend(words_from_tokens(toks, off, length / SAMPLE_RATE))
+        return text, segments, words
 
     def describe(self) -> dict:
         return {"model": self.model_key, "model_name": self.entry["name"], "repo": self.entry["repo"], "profile": self.entry["profile"],
@@ -276,4 +463,6 @@ class Transcriber:
                 "decode": {"greedy": True, "temperature": 0.0, "max_symbols_per_step": self.max_sym, "repetition_penalty": None},
                 "audio": {"sample_rate": SAMPLE_RATE, "max_utterance_seconds": MAX_SECONDS,
                           "long_audio": "energy-gated segmentation (0.7 s close, 30 s cap)", "language": "English"},
-                "gpu": self.device_name}
+                "gpu": self.device_name,
+                "hotwords": self.hw.plain_words(), "hotword_lambda": self.hw.lam if self.hw.words else None,
+                "hotword_bias": "bonus per matching piece on the decoder's token scores; blank never biased; at most 25 words"}

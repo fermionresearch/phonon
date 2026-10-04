@@ -1,5 +1,9 @@
 # Phonon-1 CPU Docker image
 
+This is the Phonon-1 family image, tag `0.1.0`. The current CPU image, `ghcr.io/fermionresearch/phonon-cpu:2.0.4`
+(also `latest`), runs Phonon-2 on amd64 and arm64 and is documented in [docs/cpu.md](../docs/cpu.md); the run lines
+below do not apply to it.
+
 Runs [Phonon-1](https://huggingface.co/FermionResearch/Phonon-1),
 [Phonon-1 Big](https://huggingface.co/FermionResearch/Phonon-1-Big) and
 [Phonon-1 Micro](https://huggingface.co/FermionResearch/Phonon-1-Micro) on
@@ -13,7 +17,7 @@ there from other backends.
 ```sh
 docker run --rm \
   -v /path/to/audio:/audio \
-  ghcr.io/fermionresearch/phonon-cpu:latest \
+  ghcr.io/fermionresearch/phonon-cpu:0.1.0 \
   transcribe /audio/recording.wav
 ```
 
@@ -32,7 +36,7 @@ outside the envelope is refused with an actionable message.
 
 ```sh
 docker run --rm -p 127.0.0.1:8000:8000 \
-  ghcr.io/fermionresearch/phonon-cpu:latest \
+  ghcr.io/fermionresearch/phonon-cpu:0.1.0 \
   serve --host 0.0.0.0 --port 8000 --api-key change-me --model phonon-1
 ```
 

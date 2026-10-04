@@ -24,14 +24,14 @@ published models (`phonon` is accepted on any server); a server running
 Phonon-1 Big answers to `phonon-1-big`, not `phonon-1`, which names the
 flagship model.
 
-`latest` tracks the newest release.
+`latest` is the Phonon-2 image (`1.0.4`); pin `0.3.0` for the Phonon-1 family.
 
 ## Transcribe files
 
 ```sh
 docker run --rm --gpus all \
   -v /path/to/Phonon-1-Big:/model -v /path/to/audio:/audio \
-  ghcr.io/fermionresearch/phonon-cuda:latest \
+  ghcr.io/fermionresearch/phonon-cuda:0.3.0 \
   transcribe /audio/recording.wav --model-dir /model
 ```
 
@@ -52,7 +52,7 @@ refused with an actionable message.
 ```sh
 docker run --rm --gpus all -p 127.0.0.1:8000:8000 \
   -v /path/to/Phonon-1-Big:/model \
-  ghcr.io/fermionresearch/phonon-cuda:latest \
+  ghcr.io/fermionresearch/phonon-cuda:0.3.0 \
   serve --host 0.0.0.0 --port 8000 --api-key change-me --model-dir /model
 ```
 

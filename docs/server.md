@@ -1,6 +1,6 @@
 # HTTP API reference (speech)
 
-`fermion serve --model phonon` starts an OpenAI-compatible speech server.
+`fermion serve phonon` starts an OpenAI-compatible speech server.
 It is standard library only (no FastAPI, no uvicorn), binds
 `127.0.0.1:8000` by default, and mounts exactly four routes:
 
@@ -16,11 +16,11 @@ a client can discover what exists in one request. The chat/completions
 endpoints are not mounted on a speech server; requests to them get a 404
 whose message names the endpoint that does exist here. (Conversely, an LLM
 server answers the audio routes with a 404 pointing at
-`fermion serve --model phonon`.)
+`fermion serve phonon`.)
 
 ```bash
-fermion serve --model phonon
-fermion serve --model phonon --port 8080 --api-key "$(openssl rand -hex 24)"
+fermion serve phonon
+fermion serve phonon-2 --port 8080 --api-key "$(openssl rand -hex 24)"
 ```
 
 Startup notes print to stderr: the base URL, the served profile and decode
@@ -40,16 +40,19 @@ work unmodified against `base_url=http://127.0.0.1:8000/v1`.
 | `file` | yes | The audio. Anything libsndfile decodes: wav, flac, ogg, aiff (any rate/channels; resampled to 16 kHz mono). mp3/m4a are rejected with a message that includes the ffmpeg conversion line. |
 | `model` | no | Accepted and checked, never silently ignored: if it does not name the model this process serves (repo id, alias, or `--served-model-name`), the request gets a 404 `model_not_found` rather than a transcript from a model it did not ask for. |
 | `response_format` | no | `json` (default), `text`, or `verbose_json`. Anything else is a 400. |
-| `timestamp_granularities` | no | `word`, `segment`, or both (the OpenAI SDKs send `timestamp_granularities[]` once per value; a comma-separated string works too). With `word`, `verbose_json` carries `words`; `segments` is always filled (`segment` is the default, as in the OpenAI API). Needs `response_format=verbose_json`. |
+| `timestamp_granularities` | no | `word`, `segment`, or both (the OpenAI SDKs send `timestamp_granularities[]` once per value; a comma-separated string works too). With `word`, `verbose_json` carries `words`; `segments` is always filled. Needs `response_format=verbose_json`. |
 | `hotwords` | no | Names and terms to favour for this request: comma-separated, a JSON list, or one `hotwords[]` part per term. Up to 25; extra terms are dropped with a note. See [hotwords.md](hotwords.md). |
 | `prompt` | no | The OpenAI field, read as a vocabulary list: comma-separated when it contains a comma (`Ada Lovelace, Quillon`), otherwise one term per word (`Ada Quillon Neutrino`). Ignored when `hotwords` is sent. |
 | `hotword_lambda` | no | Phonon-2: the bonus per matching word piece (default 2.0, between 0 and 100). |
 
-The OpenAI fields `language`, `prompt`, `temperature` and
-`timestamp_granularities` are accepted but not implemented; each is noted
-once per process on the server's stderr (the model is English-only,
-transcription is deterministic, and word/segment timestamps are not
-returned).
+Hotwords apply to the request that sends them; other requests, including
+concurrent ones, decode without them.
+
+The OpenAI fields `language` and `temperature` are accepted but not
+implemented; each is noted once per process on the server's stderr
+(transcription is deterministic). A
+`timestamp_granularities` value other than `word` or `segment` is noted once
+and ignored.
 
 Request bodies are capped at 32 MB, and chunked transfer encoding is not
 supported. Audio longer than 35 s is decoded in 25-35 s windows cut at
@@ -68,18 +71,23 @@ than that before uploading.
 `response_format=text`: the bare transcript as `text/plain`, with a trailing
 newline.
 
-`response_format=verbose_json`:
+`response_format=verbose_json` (with `timestamp_granularities[]=word`):
 
 ```json
 {
-  "text": "The transcript.",
+  "text": "The transcript, word by word.",
   "task": "transcribe",
   "language": "english",
   "duration": 4.2,
-  "segments": [],
+  "segments": [{"id": 0, "start": 0.0, "end": 4.2, "text": "The transcript, word by word."}],
+  "words": [{"word": "The", "start": 0.32, "end": 0.48},
+            {"word": "transcript,", "start": 0.48, "end": 1.04},
+            {"word": "word", "start": 1.12, "end": 1.36},
+            {"word": "by", "start": 1.36, "end": 1.52},
+            {"word": "word.", "start": 1.52, "end": 1.84}],
   "x_fermion": {
-    "model": "FermionResearch/Phonon-1",
-    "profile": "audio6",
+    "model": "FermionResearch/Phonon-2",
+    "profile": "five-value",
     "decode_seconds": 0.31,
     "kind": "speech",
     "backend": "audio6",
@@ -95,18 +103,8 @@ newline.
 ```
 
 `duration` is the audio length in seconds. `segments` has one entry per
-sentence or pause-sized stretch of speech in OpenAI's segment shape, with
-`start` and `end` in seconds from the start of the file and that stretch's
-`text`; the texts joined with single spaces equal `text`. A segment closes at
-the end of a sentence or at a pause of 0.8 s or more and runs at most 7 s and
-two 42-character lines. `seek` is the segment's start in 10 ms frames;
-the numeric fields are always numbers, never null, as the
-OpenAI SDKs type them: `compression_ratio` is
-computed from the text as Whisper does; `avg_logprob` and `no_speech_prob`
-are 0 (the decoder does not report them, and a segment only exists where
-words were decoded); `tokens` is empty and `temperature` is 0 (greedy
-decoding). Phonon-1 gives one segment per decoded window.
-`words` is present when
+decoded window with `start` and `end` in seconds: one window for audio up to
+35 s, 25-35 s windows cut at pauses beyond that. `words` is present when
 `timestamp_granularities` includes `word`: one entry per word in OpenAI's
 shape (`word`, `start`, `end`), in seconds from the start of the file, from
 the decoder's own token timings; punctuation stays with the word it follows.
@@ -142,11 +140,15 @@ curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
 # Bare text, with an API key
 curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
   -H "Authorization: Bearer YOUR_KEY" \
-  -F file=@clip.wav -F model=phonon-1 -F response_format=text
+  -F file=@clip.wav -F model=phonon-2 -F response_format=text
 
 # Verbose JSON
 curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
   -F file=@clip.flac -F response_format=verbose_json
+
+# Verbose JSON with word timestamps
+curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
+  -F file=@clip.flac -F response_format=verbose_json -F 'timestamp_granularities[]=word'
 ```
 
 OpenAI Python client:
@@ -156,7 +158,7 @@ from openai import OpenAI
 
 client = OpenAI(base_url="http://127.0.0.1:8000/v1", api_key="YOUR_KEY")
 out = client.audio.transcriptions.create(
-    model="phonon-1", file=open("clip.wav", "rb"))
+    model="phonon-2", file=open("clip.wav", "rb"))
 print(out.text)
 ```
 
@@ -170,21 +172,21 @@ monitoring works without credentials). A speech server answers:
 ```json
 {
   "status": "ok",
-  "model": "FermionResearch/Phonon-1",
+  "model": "FermionResearch/Phonon-2",
   "kind": "speech",
-  "version": "0.2.2",
-  "repo": "FermionResearch/Phonon-1",
-  "profile": "audio6",
+  "version": "0.2.5",
+  "repo": "FermionResearch/Phonon-2",
+  "profile": "five-value",
   "sha256": "…",
-  "sha256_short": "214c3b45",
-  "download_bytes": 415077202,
+  "sha256_short": "98125795",
+  "download_bytes": 163515201,
   "model_dir": "…",
   "decode": { "…": "the exact decode configuration in force" },
   "endpoints": ["/v1/audio/transcriptions", "/v1/audio/stream",
                 "/v1/models", "/health"],
   "tool_calling": false,
-  "stats": {"requests": 12, "streams": 2, "audio_seconds": 51.4,
-            "decode_seconds": 2.2, "errors": 0, "realtime_factor": 23.4}
+  "stats": {"requests": "…", "streams": "…", "audio_seconds": "…",
+            "decode_seconds": "…", "errors": "…", "realtime_factor": "…"}
 }
 ```
 
@@ -208,6 +210,45 @@ The standard OpenAI list shape with one entry, the served model id
   startup; without `--api-key` that exposes an unauthenticated model server
   beyond this machine. Set a key before you widen the bind, or better, keep
   the loopback bind and put a reverse proxy in front (below).
+
+## Unix socket and dictation tools
+
+`--unix-socket PATH` serves the same API on an owner-only Unix socket (macOS and Linux) instead of a TCP port, so no API key is needed for local clients:
+
+```bash
+fermion serve phonon-2 --unix-socket ~/.cache/fermion/phonon.sock
+curl --unix-socket ~/.cache/fermion/phonon.sock http://localhost/v1/audio/transcriptions -F file=@meeting.wav -F model=phonon-2
+```
+
+`--threads N` sets the CPU engine's thread count (default one per physical core from six cores up, every logical cpu on smaller parts, performance cores on Apple silicon).
+
+A dictation tool keeps one server running and sends each recording to it. Voxtype's remote backend, in its config file:
+
+```toml
+engine = "whisper"
+[whisper]
+backend = "remote"
+remote_endpoint = "http://127.0.0.1:8010"
+remote_model = "phonon-2"
+```
+
+To keep the server running at login on Linux, a systemd user unit (`~/.config/systemd/user/fermion-serve.service`):
+
+```ini
+[Unit]
+Description=Phonon speech server
+
+[Service]
+ExecStart=%h/.local/bin/fermion serve phonon-2 --port 8010
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+```
+
+```bash
+systemctl --user enable --now fermion-serve
+```
 
 ## One request at a time
 

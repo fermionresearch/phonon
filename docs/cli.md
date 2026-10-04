@@ -6,10 +6,12 @@ language models from one install. This page covers the speech commands in full a
 Neutrino commands in brief.
 
 ```
-fermion transcribe   one-shot file transcription (Apple silicon, x86-64 CPU)
+fermion transcribe   one-shot file transcription (Apple silicon; Linux, Windows and macOS CPUs)
 fermion listen       live microphone transcription (Apple silicon)
 fermion serve        OpenAI-compatible HTTP server (speech or LLM)
 fermion models       list published models and what is installed
+fermion describe     this machine's CPU features and the speech kernel tier it runs
+fermion speech bench speed of a speech model on this machine
 fermion chat         Neutrino REPL
 fermion generate     Neutrino one-shot completion
 ```
@@ -26,22 +28,35 @@ detail.
 One-shot speech-to-text: an audio file in, a line of text out.
 
 ```bash
-fermion transcribe meeting.wav
+fermion transcribe phonon-2 meeting.wav
 ```
 
 ```
-usage: fermion transcribe [-h] [--model MODEL] [--json] [--verbose]
-                          [--download-only]
-                          audio
+usage: fermion transcribe [-h] [--json] [--verbose] [--threads N]
+                          [--download-only] [--hotwords WORDS]
+                          [--hotwords-file FILE] [--hotword-lambda LAMBDA]
+                          [--hotword-strength LOGITS]
+                          [MODEL AUDIO ...]
+
+positional arguments:
+  MODEL AUDIO           the model (phonon-2, phonon-1, phonon-1-big,
+                        phonon-1-micro, a repo id or a local model directory)
+                        followed by the audio file (wav/flac/ogg/aiff);
+                        `fermion transcribe phonon-2 meeting.wav`
 ```
 
 | Argument | Meaning |
 |---|---|
 | `audio` | Path to an audio file. Anything libsndfile reads: wav, flac, ogg, aiff. Any sample rate and channel count (resampled to 16 kHz mono internally). mp3/m4a are not read; convert first: `ffmpeg -i in.m4a -ar 16000 -ac 1 out.wav`. |
-| `--model MODEL` | Speech model repo id, alias, or a local unpacked model directory. Default: `FermionResearch/Phonon-1`. See [Model selection](#model-selection). |
-| `--json` | Emit a JSON object instead of bare text: text, timings, per-segment timestamps, `truncated` flag. |
+| `MODEL` | First positional argument: `phonon-2`, `phonon-1`, `phonon-1-big`, `phonon-1-micro`, a repo id or a local model directory. Required. See [Model selection](#model-selection). |
+| `--threads N` | CPU engine threads (default one per physical core from six cores up, every logical cpu on smaller parts, performance cores on Apple silicon); same as `FERMION_CPU_THREADS`. |
+| `--json` | Emit a JSON object instead of bare text: text, timings, per-segment timestamps, word timestamps, `truncated` flag. |
 | `--verbose` | Print the decode configuration and timings to stderr (decode-only and wall-clock, separately, plus the segment count). |
 | `--download-only` | Fetch and verify the model, print its local directory, then stop without decoding. |
+| `--hotwords WORDS` | Names and terms to favour, comma-separated (repeatable; `@FILE` reads a file). Up to 25 on Phonon-2. See [hotwords.md](hotwords.md). |
+| `--hotwords-file FILE` | Read hotwords from a file: one term per line, or comma-separated; `#` starts a comment. |
+| `--hotword-lambda LAMBDA` | Phonon-2: the bonus per matching word piece (default 2.0). |
+| `--hotword-strength LOGITS` | Phonon-1: how hard `--hotwords` pull (default 4). |
 
 ### stdout/stdin discipline
 
@@ -51,7 +66,7 @@ progress bar, warning and timing goes to stderr. So this writes exactly the
 transcript and nothing else:
 
 ```bash
-fermion transcribe clip.wav > out.txt
+fermion transcribe phonon-2 clip.wav > out.txt
 ```
 
 Audio is read from a file path, not from stdin. There is no `-` argument.
@@ -59,11 +74,16 @@ Audio is read from a file path, not from stdin. There is no `-` argument.
 ### `--json` output shape
 
 ```json
-{"text": "...", "model": "FermionResearch/Phonon-1", "profile": "audio6",
- "backend": "audio6", "engine": "mlx",
+{"text": "The transcript, word by word.", "model": "FermionResearch/Phonon-2", "profile": "five-value",
+ "backend": "phonon2-five-value", "engine": "mlx",
  "duration_seconds": 4.2, "decode_seconds": 0.31, "wall_seconds": 2.4,
  "segment_count": 1,
- "segments": [{"id": 0, "start": 0.0, "end": 4.2, "text": "..."}],
+ "segments": [{"id": 0, "start": 0.0, "end": 4.2, "text": "The transcript, word by word."}],
+ "words": [{"text": "The", "start": 0.32, "end": 0.48},
+           {"text": "transcript,", "start": 0.48, "end": 1.04},
+           {"text": "word", "start": 1.12, "end": 1.36},
+           {"text": "by", "start": 1.36, "end": 1.52},
+           {"text": "word.", "start": 1.52, "end": 1.84}],
  "truncated": false}
 ```
 
@@ -74,6 +94,19 @@ one `segments` entry each (start and end in seconds), and the window
 transcripts are joined with single spaces in `text`. `truncated` is true if
 any window used its whole token budget, which means part of that window's
 audio may be missing from the transcript.
+
+### Word timestamps
+
+`words` carries one entry per word with `start` and `end` in seconds from
+the start of the file, on long files too (a word in the fourth window is
+placed where it falls in the whole recording, not in its window). The
+times come from the decoder itself: Phonon-2 emits every token at an
+encoder frame of 80 ms with a predicted duration, so a word starts at its
+first token's frame and ends where its last token's duration ends.
+Punctuation stays with the word it follows (`"transcript,"`), so the word
+texts joined with single spaces are exactly `text`. Phonon-2 gives word
+timestamps on every engine (Apple silicon, and Linux, Windows and macOS
+CPUs). Phonon-1's decoder has no timings; its `words` is `null`.
 
 ### Determinism
 
@@ -99,20 +132,29 @@ updates on one terminal line; finalized segments print permanently; Ctrl-C
 stops and prints the full transcript.
 
 ```bash
-fermion listen
-fermion listen > note.txt      # captures exactly the words spoken
-fermion listen --wav clip.wav  # the same live path, from a file
+fermion listen phonon-2
+fermion listen phonon-2 > note.txt      # captures exactly the words spoken
+fermion listen phonon-2 --wav clip.wav  # the same live path, from a file
 ```
 
 ```
-usage: fermion listen [-h] [--wav FILE] [--model MODEL] [--verbose]
+usage: fermion listen [-h] [--wav FILE] [--verbose] [--hotwords WORDS]
+                      [--hotwords-file FILE] [--hotword-lambda LAMBDA]
+                      [--hotword-strength LOGITS]
+                      [MODEL]
+
+positional arguments:
+  MODEL                 the speech model: phonon-2, phonon-1, phonon-1-big,
+                        phonon-1-micro, a repo id or a local model directory;
+                        `fermion listen phonon-2`
 ```
 
 | Flag | Meaning |
 |---|---|
 | `--wav FILE` | Stream this audio file through the identical live code path, paced to real time, instead of capturing the microphone. The whole streaming stack (segmentation, partial cadence, final decode, rendering) runs headless; only microphone capture is skipped. |
-| `--model MODEL` | Same semantics as `transcribe --model`, byte for byte. |
+| `MODEL` | Same semantics as the first argument of `transcribe`, byte for byte. |
 | `--verbose` | Print the decode configuration and one timed stderr line per partial/final instead of the animated live display. |
+| `--hotwords`, `--hotwords-file`, `--hotword-lambda`, `--hotword-strength` | As for `transcribe`. |
 
 ### Output discipline
 
@@ -133,8 +175,8 @@ finals print as plain lines (partials only under `--verbose`).
 - Silence detection is an adaptive energy gate: the louder of an absolute
   room-tone floor and a fraction of the segment's own peak.
 - Every partial and final runs the exact `transcribe` decode
-  (temperature 0.0). On a single-utterance file, `fermion listen --wav f.wav`
-  prints a transcript byte-identical to `fermion transcribe f.wav`.
+  (temperature 0.0). On a single-utterance file, `fermion listen phonon-2 --wav f.wav`
+  prints a transcript byte-identical to `fermion transcribe phonon-2 f.wav`.
 - Before listening starts, one throwaway decode is run to pay the Metal graph
   compile up front, so the first partial lands on cadence rather than
   stalling. `--verbose` prints how long that warm-up took.
@@ -153,7 +195,7 @@ The microphone is opened via `sounddevice` (installed transitively by
 message. On macOS the usual cause is that your terminal application has no
 microphone permission: grant it under
 **System Settings, Privacy & Security, Microphone**, then retry.
-`fermion listen --wav file.wav` runs the same live path without a microphone.
+`fermion listen phonon-2 --wav file.wav` runs the same live path without a microphone.
 
 ---
 
@@ -165,7 +207,7 @@ model you pass determines which endpoints are mounted.**
 ### Speech mode
 
 ```bash
-fermion serve --model phonon
+fermion serve phonon
 ```
 
 With a speech model, the server mounts:
@@ -183,7 +225,7 @@ behind a single decode worker (one Metal command queue); a second request
 waits, it is not rejected. The WebSocket endpoint allows one live stream at
 a time.
 
-Flags that matter in speech mode: `--model`, `--host` (default `127.0.0.1`),
+Flags that matter in speech mode: `--host` (default `127.0.0.1`), `--unix-socket PATH` (owner-only socket in place of a port and key, macOS and Linux), `--threads N`,
 `--port` (default `8000`), `--api-key` (require this bearer token on `/v1/*`
 requests), `--cors`, `--served-model-name`. The LLM sampler and backend flags
 (`--temperature`, `--draft`, `--kv-dtype`, `--backend`, `--session-ctx`,
@@ -196,7 +238,7 @@ reverse-proxy guidance: [docs/server.md](server.md).
 
 ### LLM mode
 
-Started without `--model` (or with a Neutrino model or a local TRTC
+Started with a Neutrino model (or a local TRTC
 container), `serve` is an OpenAI-compatible language-model server:
 `POST /v1/chat/completions` (streaming and non-streaming, with tool calling),
 `POST /v1/completions`, `GET /v1/models`, `GET /health`. It defaults to the
@@ -254,25 +296,65 @@ fermion models --all    # also show profiles retained but never published
 
 ## Model selection
 
-Every speech verb takes `--model`, which accepts a repo id, a short alias, or
-a local directory holding an unpacked model. There is deliberately no
+Every speech verb takes the model as its first argument, a short alias, a repo id, or
+a local directory holding an unpacked model. Name the model. Phonon never guesses. There is deliberately no
 `--profile` flag: each model is its own repository, so the model is the
 profile.
 
 | Model (repo id) | Aliases | Profile | Download | On disk |
 |---|---|---|---|---|
-| `FermionResearch/Phonon-1` (default) | `phonon`, `phonon-1`, `speech`, `stt`, `asr` | `audio6` | 415 MB | 455 MB |
+| `FermionResearch/Phonon-2` | `phonon-2`, `phonon2`, `phonon`, `speech`, `stt`, `asr` | `five-value` | 164 MB | 178 MB |
+| `FermionResearch/Phonon-1` | `phonon-1` | `audio6` | 415 MB | 455 MB |
 | `FermionResearch/Phonon-1-Big` | `phonon-1-big`, `phonon-big`, `big` | `parity` | 581 MB | 822 MB |
 | `FermionResearch/Phonon-1-Micro` | `phonon-1-micro`, `phonon-micro`, `micro` | `micro` | 285 MB | 331 MB |
 
 - Aliases and repo ids are case-insensitive
-  (`--model fermionresearch/phonon-1` works).
-- The bare family aliases (`phonon`, `speech`, `stt`, `asr`) resolve to the
-  default model, so `fermion transcribe clip.wav` with no `--model` does the
-  expected thing.
+  (`fermion transcribe fermionresearch/phonon-1 clip.wav` works).
+- Every speech verb takes the model first, for example `fermion transcribe phonon-2 clip.wav`.
+  A command without a model prints the model names and exits.
 - A local directory is accepted anywhere a repo id is:
-  `--model /path/to/model_v18_mlx_head8audio6_quint5`. The directory must
+  `fermion transcribe /path/to/model_phonon2_c4c_int6 clip.wav`. The directory must
   hold `config.json` and `packed_manifest.json` side by side.
+
+### A command without a model
+
+Nothing is downloaded; the command prints the model list and exits 2:
+
+```
+fermion transcribe: name the model. Phonon never guesses.
+
+  fermion transcribe phonon-2 meeting.wav
+
+Models (alias, kind, repo):
+  phonon-2, phonon2, phonon          speech   FermionResearch/Phonon-2
+  phonon-1                           speech   FermionResearch/Phonon-1
+  phonon-1-big, phonon-big, big      speech   FermionResearch/Phonon-1-Big
+  phonon-1-micro, phonon-micro, micro speech   FermionResearch/Phonon-1-Micro
+  neutrino, neutrino-8b, 8b          language fermionresearch/Neutrino-8B
+  neutrino-0.6b, 0.6b, draft         language fermionresearch/Neutrino-0.6B
+  neutrino-0.6b-chat, 0.6b-chat      language fermionresearch/Neutrino-0.6B-Chat
+
+`fermion models` lists everything and marks what is already on this machine.
+[exit 2]
+```
+
+`--model MODEL` still works in this release and prints one note line saying the model now comes first.
+
+### The `phonon`, `phonon-2` and `phonon-1` commands
+
+Each is the `fermion` CLI with its model fixed:
+
+```
+phonon: the fermion CLI with the model fixed to phonon-2.
+
+  phonon transcribe meeting.wav
+  phonon listen
+  phonon serve [--port 8000] [--unix-socket PATH]
+  phonon bench --audio clip.wav
+  phonon describe
+
+Everything after the verb is passed to `fermion <verb> phonon-2`; `phonon <verb> -h` shows that verb's options.
+```
 
 ### What a fresh machine downloads, and where it lands
 
@@ -288,12 +370,12 @@ On first use of a model, the CLI:
    inference time.
 3. Caches the unpacked model under
    `~/.cache/fermion/speech/<Org__Repo>/<unpack_dir>/`, for example
-   `~/.cache/fermion/speech/FermionResearch__Phonon-1/model_v18_mlx_head8audio6_quint5/`.
+   `~/.cache/fermion/speech/FermionResearch__Phonon-2/model_phonon2_c4c_int6/`.
    The downloaded archive itself sits in the Hugging Face hub cache
    (`~/.cache/huggingface/hub` by default).
 
 Later runs load from the cache with no network access.
-`fermion transcribe --download-only clip-not-needed` fetches and verifies
+`fermion transcribe phonon-2 --download-only clip-not-needed` fetches and verifies
 without decoding, and prints the model directory.
 
 Two environment variables move the caches:

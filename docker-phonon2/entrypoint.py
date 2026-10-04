@@ -193,7 +193,11 @@ def cmd_transcribe(args) -> None:
             fail(str(exc))
         waveforms.append((path, wav, duration))
 
+    words = _cli_hotwords(args)
     engine = Transcriber(*resolve_model(args))
+    if words or args.hotword_lambda is not None:
+        n = engine.set_hotwords(words, args.hotword_lambda)
+        log(f"{n} hotword{'s' if n != 1 else ''} active (lambda {engine.hw.lam:g})")
     for path, wav, duration in waveforms:
         t0 = time.perf_counter()
         text, segments = engine.transcribe_long(wav)
@@ -203,7 +207,94 @@ def cmd_transcribe(args) -> None:
         print(text, flush=True)
 
 
+def _cli_hotwords(args) -> list:
+    """`--hotwords "a, b" --hotwords @terms.txt --hotwords-file terms.txt` -> the distinct terms, in order."""
+    from hotwords import parse_list
+    out: list = []
+    chunks = list(getattr(args, "hotwords", None) or [])
+    chunks += ["@" + f for f in (getattr(args, "hotwords_file", None) or [])]
+    for chunk in chunks:
+        chunk = str(chunk)
+        if chunk.startswith("@"):
+            try:
+                text = Path(chunk[1:]).expanduser().read_text(encoding="utf-8")
+            except OSError as exc:
+                fail(f"--hotwords file {chunk[1:]}: {exc}")
+            terms = [" ".join(l.split()) for l in text.splitlines() if l.strip() and not l.lstrip().startswith("#")]
+        else:
+            terms = parse_list(chunk) if "," in chunk else [" ".join(chunk.split())]
+        for t in terms:
+            if t and t not in out:
+                out.append(t)
+    return out
+
+
+def _form_hotwords(form):
+    """(terms or None, lambda or None) from a transcription form: `hotwords` (a comma-separated string, a JSON list string,
+    or repeated `hotwords[]` parts) wins; else `prompt` read as a vocabulary list (comma-separated when it has a comma,
+    else whitespace-separated).  None = the field is absent (the engine's own list applies)."""
+    from hotwords import parse_list
+    terms = None
+    for key in ("hotwords[]", "hotwords"):
+        v = form.get(key)
+        if v is None:
+            continue
+        terms = [] if terms is None else terms
+        vals = v if isinstance(v, list) else [v]
+        for item in vals:
+            if not isinstance(item, str):
+                continue
+            t = item.strip()
+            if t.startswith("["):
+                try:
+                    val = json.loads(t)
+                    terms.extend(" ".join(str(x).split()) for x in (val if isinstance(val, list) else [val]))
+                    continue
+                except ValueError:
+                    pass
+            terms.extend(parse_list(t) if key == "hotwords" else [" ".join(t.split())])
+    if terms is None and isinstance(form.get("prompt"), str):
+        terms = parse_list(form["prompt"])
+    if terms is not None:
+        seen = []
+        for t in terms:
+            if t and t not in seen:
+                seen.append(t)
+        terms = seen
+    lam = form.get("hotword_lambda")
+    if isinstance(lam, str) and lam.strip():
+        lam = float(lam)
+    else:
+        lam = None
+    return terms, lam
+
+
 # --------------------------------------------------------------------- serve
+
+def _granularities(form) -> list:
+    """`timestamp_granularities` values from a parsed form: `timestamp_granularities[]` parts (the SDKs), a plain or
+    comma-separated string, or a JSON list string; lower-cased, de-duplicated, in order."""
+    raw: list = []
+    for key in ("timestamp_granularities[]", "timestamp_granularities"):
+        v = form.get(key)
+        if isinstance(v, list):
+            raw.extend(v)
+        elif isinstance(v, str):
+            t = v.strip()
+            if t.startswith("["):
+                try:
+                    val = json.loads(t); raw.extend(val if isinstance(val, list) else [val]); continue
+                except ValueError:
+                    pass
+            raw.extend(t.split(","))
+    out: list = []
+    for g in raw:
+        g = str(g).strip().strip('"').lower()
+        if g and g not in out:
+            out.append(g)
+    return out
+
+
 class DrainingHTTPServer(ThreadingHTTPServer):
     # Wait for in-flight handler threads on close (graceful SIGTERM drain).
     daemon_threads = False
@@ -415,14 +506,28 @@ class Handler(BaseHTTPRequestHandler):
         for field, why in (
                 ("language", "the model is English-only; `language` is "
                              "ignored"),
-                ("prompt", "prompt conditioning is not implemented"),
                 ("temperature", "transcription is deterministic "
-                                "(temperature 0)"),
-                ("timestamp_granularities",
-                 "word/segment timestamps are not returned")):
+                                "(temperature 0)")):
             if field in form and field not in self.server.warned_fields:  # type: ignore[attr-defined]
                 self.server.warned_fields.add(field)  # type: ignore[attr-defined]
                 sys.stderr.write(f"[{BRAND}] note: `{field}` — {why}\n")
+        # `timestamp_granularities` selects `words` (word) in verbose_json; `segments` is always filled.
+        granularities = _granularities(form)
+        for g in granularities:
+            key = "timestamp_granularities:" + g
+            if g not in ("word", "segment") and key not in self.server.warned_fields:  # type: ignore[attr-defined]
+                self.server.warned_fields.add(key)  # type: ignore[attr-defined]
+                sys.stderr.write(f"[{BRAND}] note: `timestamp_granularities` value {g!r} is not supported; use word and/or segment\n")
+        want_words = "word" in granularities
+        try:
+            hot, hot_lam = _form_hotwords(form)
+        except ValueError:
+            return self._err(400, "hotword_lambda must be a number", param="hotword_lambda")
+        if hot_lam is not None and not (0 <= hot_lam <= 100):
+            return self._err(400, "hotword_lambda must be between 0 and 100", param="hotword_lambda")
+        if hot is not None and len(hot) > 25 and "hotwords:cap" not in self.server.warned_fields:  # type: ignore[attr-defined]
+            self.server.warned_fields.add("hotwords:cap")  # type: ignore[attr-defined]
+            sys.stderr.write(f"[{BRAND}] note: more than 25 hotwords in a request; the first 25 are used\n")
 
         try:
             wav, duration = decode_audio(
@@ -435,8 +540,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._queue_full()
         try:
             t0 = time.perf_counter()
-            text, segments = self.engine.transcribe_long(
-                wav, lock=self.server.gpu_lock)  # type: ignore[attr-defined]
+            text, segments, words = self.engine.transcribe_long_timed(
+                wav, lock=self.server.gpu_lock,  # type: ignore[attr-defined]
+                hotwords=hot, hotword_lambda=hot_lam)
             decode_s = time.perf_counter() - t0
         finally:
             self._release_queue_slot()
@@ -458,11 +564,13 @@ class Handler(BaseHTTPRequestHandler):
             out.update({
                 "task": "transcribe", "language": "english",
                 "duration": round(duration, 3),
-                "segments": [],
-                "x_phonon": {"decode_seconds": round(decode_s, 3),
-                             "audio_segments": segments,
-                             **self.engine.describe()},
+                "segments": segments,
             })
+            if want_words:
+                out["words"] = [{"word": w["text"], "start": w["start"], "end": w["end"]} for w in words]
+            out["x_phonon"] = {"decode_seconds": round(decode_s, 3),
+                               "audio_segments": len(segments),
+                               **self.engine.describe()}
         self._send_json(200, out)
 
     # ------------------------------------------------------------ WebSocket
@@ -712,6 +820,13 @@ def main() -> None:
     p_tr = sub.add_parser(
         "transcribe", help="transcribe 16 kHz recordings to stdout")
     p_tr.add_argument("audio", nargs="+", help="16 kHz audio file(s)")
+    p_tr.add_argument("--hotwords", action="append", default=None, metavar="WORDS",
+                      help='names and terms the decoder should favour, comma-separated (repeatable; @FILE reads one '
+                           'term per line); at most 25. Default: none (the decode is unchanged)')
+    p_tr.add_argument("--hotwords-file", action="append", default=None, metavar="FILE",
+                      help="read hotwords from FILE, one term per line")
+    p_tr.add_argument("--hotword-lambda", type=float, default=None, metavar="LAMBDA",
+                      help="bonus per matching piece on the decoder's scores (default 2.0)")
     _add_model_args(p_tr)
     p_tr.set_defaults(func=cmd_transcribe)
 
@@ -729,8 +844,18 @@ def main() -> None:
     _add_model_args(p_sv)
     p_sv.set_defaults(func=cmd_serve)
 
-    args = parser.parse_args()
+    args = parser.parse_args(_model_first(sys.argv[1:]))
     args.func(args)
+
+
+def _model_first(argv: list) -> list:
+    """`transcribe phonon-2 /audio/x.wav` and `serve phonon-2 ...` (the form the docs use, and the pip CLI's) ->
+    `--model phonon-2`; the older `transcribe /audio/x.wav --model phonon-2` keeps working."""
+    if len(argv) >= 2 and argv[0] in ("transcribe", "serve") and not argv[1].startswith("-") and "--model" not in argv:
+        name = argv[1]
+        if argv[0] == "serve" or (not Path(name).exists() and len(argv) >= 3):
+            return [argv[0], *argv[2:], "--model", name]
+    return argv
 
 
 if __name__ == "__main__":

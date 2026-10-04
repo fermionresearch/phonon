@@ -3,19 +3,19 @@
 Speech commands are designed to fail with one plain message and exit code 1,
 never a traceback. This page lists the messages you may see and what to do.
 
-## "the CPU speech engine runs on x86-64 Linux, x86-64 Windows and Apple silicon"
+## "the CPU speech engine runs on x86-64 and ARM Linux, x86-64 Windows and Apple silicon"
 
 Full message (from `fermion transcribe` on an unsupported machine):
 
 ```
-`fermion transcribe` is unavailable: the CPU speech engine runs on x86-64
-Linux, x86-64 Windows and Apple silicon — this is <OS>/<arch>.
+`fermion transcribe` is unavailable: the CPU speech engine runs on x86-64 and ARM Linux,
+x86-64 Windows, and Apple silicon and Intel Macs — this is <OS>/<arch>.
 ```
 
 Phonon runs on Apple silicon Macs (through MLX by default, or the CPU
-engine), and on x86-64 Linux and Windows through the CPU engine
-([docs/cpu.md](cpu.md)). Machines outside that list — Intel Macs, ARM
-Windows, ARM Linux — are refused with the one-line message above. The
+engine), and on x86-64 and 64-bit Arm Linux, x86-64 Windows and Intel Macs through the CPU engine
+([docs/cpu.md](cpu.md)). Machines outside that list — ARM
+Windows, for one — are refused with the one-line message above. The
 Neutrino commands (`fermion chat`, `fermion generate`, `fermion serve`
 with a language model) still work there. For NVIDIA GPUs, see
 [docs/cuda.md](cuda.md).
@@ -170,7 +170,7 @@ model that installed is a model that verified.
 
 To re-check independently:
 
-- `fermion transcribe --download-only unused.wav` prints the model directory
+- `fermion transcribe phonon-2 --download-only unused.wav` prints the model directory
   (and re-verifies if anything needs fetching; the audio argument is not
   read).
 - Each model repo publishes `verify_install.py`, which re-hashes every shard

@@ -51,12 +51,17 @@ class LiveSession:
     """
 
     def __init__(self, transcribe, *, on_partial=None, on_final=None,
-                 partials: bool = True):
+                 partials: bool = True, on_segment=None):
         self._transcribe = transcribe
         self.on_partial = on_partial or (lambda text: None)
         self.on_final = on_final or (lambda text: None)
+        # `on_segment(text, start_sample, n_samples)` fires once per finalized
+        # decode (empty text included) with the segment's position in the
+        # whole input, so a caller can place its words in file time.
+        self.on_segment = on_segment or (lambda text, start, n: None)
         self.partials = partials
         self.finals: list[str] = []
+        self._fed = 0      # every sample ever fed, for the segment offsets
         self._tail = None  # sub-block remainder of arbitrary-size input
         self._reset_segment()
 
@@ -95,6 +100,7 @@ class LiveSession:
             return
         self._blocks.append(block)
         self._samples += block.size
+        self._fed += block.size
 
         rms = float(np.sqrt(np.mean(block * block)))
         self._peak_rms = max(self._peak_rms, rms)
@@ -133,6 +139,8 @@ class LiveSession:
         audio = np.concatenate(self._blocks)
         self._reset_segment()
         text = self._transcribe(audio)
+        # the blocks are the most recent ones fed, contiguous: the segment starts `audio.size` samples before `_fed`
+        self.on_segment(text, self._fed - audio.size, audio.size)
         if text:
             self.finals.append(text)
             self.on_final(text)
