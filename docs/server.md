@@ -40,7 +40,7 @@ work unmodified against `base_url=http://127.0.0.1:8000/v1`.
 | `file` | yes | The audio. Anything libsndfile decodes: wav, flac, ogg, aiff (any rate/channels; resampled to 16 kHz mono). mp3/m4a are rejected with a message that includes the ffmpeg conversion line. |
 | `model` | no | Accepted and checked, never silently ignored: if it does not name the model this process serves (repo id, alias, or `--served-model-name`), the request gets a 404 `model_not_found` rather than a transcript from a model it did not ask for. |
 | `response_format` | no | `json` (default), `text`, or `verbose_json`. Anything else is a 400. |
-| `timestamp_granularities` | no | `word`, `segment`, or both (the OpenAI SDKs send `timestamp_granularities[]` once per value; a comma-separated string works too). With `word`, `verbose_json` carries `words`; `segments` is always filled. Needs `response_format=verbose_json`. |
+| `timestamp_granularities` | no | `word`, `segment`, or both (the OpenAI SDKs send `timestamp_granularities[]` once per value; a comma-separated string works too). With `word`, `verbose_json` carries `words`; `segments` is always filled (`segment` is the default, as in the OpenAI API). Needs `response_format=verbose_json`. |
 | `hotwords` | no | Names and terms to favour for this request: comma-separated, a JSON list, or one `hotwords[]` part per term. Up to 25; extra terms are dropped with a note. See [hotwords.md](hotwords.md). |
 | `prompt` | no | The OpenAI field, read as a vocabulary list: comma-separated when it contains a comma (`Ada Lovelace, Quillon`), otherwise one term per word (`Ada Quillon Neutrino`). Ignored when `hotwords` is sent. |
 | `hotword_lambda` | no | Phonon-2: the bonus per matching word piece (default 2.0, between 0 and 100). |
@@ -56,7 +56,7 @@ and ignored.
 
 Request bodies are capped at 32 MB, and chunked transfer encoding is not
 supported. Audio longer than 35 s is decoded in 25-35 s windows cut at
-pauses (one `segments` entry each in `verbose_json`); the 32 MB body cap
+pauses; the 32 MB body cap
 holds about 17 minutes of 16 kHz 16-bit mono wav, so split anything longer
 than that before uploading.
 
@@ -79,7 +79,9 @@ newline.
   "task": "transcribe",
   "language": "english",
   "duration": 4.2,
-  "segments": [{"id": 0, "start": 0.0, "end": 4.2, "text": "The transcript, word by word."}],
+  "segments": [{"id": 0, "seek": 32, "start": 0.32, "end": 1.84, "text": "The transcript, word by word.",
+                "tokens": [], "temperature": 0.0, "avg_logprob": 0.0, "compression_ratio": 0.879,
+                "no_speech_prob": 0.0}],
   "words": [{"word": "The", "start": 0.32, "end": 0.48},
             {"word": "transcript,", "start": 0.48, "end": 1.04},
             {"word": "word", "start": 1.12, "end": 1.36},
@@ -103,8 +105,18 @@ newline.
 ```
 
 `duration` is the audio length in seconds. `segments` has one entry per
-decoded window with `start` and `end` in seconds: one window for audio up to
-35 s, 25-35 s windows cut at pauses beyond that. `words` is present when
+sentence or pause-sized stretch of speech in OpenAI's segment shape, with
+`start` and `end` in seconds from the start of the file and that stretch's
+`text`; the texts joined with single spaces equal `text`. A segment closes at
+the end of a sentence or at a pause of 0.8 s or more and runs at most 7 s and
+two 42-character lines. `seek` is the segment's start in 10 ms frames;
+the numeric fields are always numbers, never null, as the
+OpenAI SDKs type them: `compression_ratio` is
+computed from the text as Whisper does; `avg_logprob` and `no_speech_prob`
+are 0 (the decoder does not report them, and a segment only exists where
+words were decoded); `tokens` is empty and `temperature` is 0 (greedy
+decoding). Phonon-1 gives one segment per decoded window.
+`words` is present when
 `timestamp_granularities` includes `word`: one entry per word in OpenAI's
 shape (`word`, `start`, `end`), in seconds from the start of the file, from
 the decoder's own token timings; punctuation stays with the word it follows.

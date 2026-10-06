@@ -3,8 +3,9 @@
 
 Two modes:
 
-  phonon-cuda transcribe <audio...> [--model NAME] [--model-dir DIR]
-      Transcribe 16 kHz recordings to stdout. Single utterances (<= 30 s)
+  phonon-cuda transcribe <audio...> [--model NAME] [--model-dir DIR] [--json] [--verbose]
+      Transcribe 16 kHz recordings to stdout (--json: one object per file
+      with segment and word timestamps). Single utterances (<= 30 s)
       decode in one call; longer recordings are split at pauses by an
       energy gate and the finals joined with spaces.
 
@@ -42,7 +43,7 @@ from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-VERSION = "1.0.3"
+VERSION = "1.0.7"
 BRAND = "phonon-cuda"
 
 #: The published models this image serves. Release facts (archive filename,
@@ -183,8 +184,15 @@ from phonon2_cuda_engine import Transcriber  # noqa: E402  (the Phonon-2 CUDA en
 def cmd_transcribe(args) -> None:
     paths = [Path(p) for p in args.audio]
     for path in paths:
-        if not path.is_file():
+        try:
+            missing = not path.is_file(); unreadable = not missing and not os.access(path, os.R_OK)
+        except PermissionError:                     # a 0700 parent directory: stat itself is refused
+            missing, unreadable = False, True
+        if missing:
             fail(f"no such file: {path}")
+        if unreadable:
+            fail(f"{path} is not readable by the container's user (uid {os.getuid()}). The image runs as an unprivileged "
+                 f"user: make the file and its directory world-readable (chmod a+rX), or run with --user $(id -u).")
     waveforms = []
     for path in paths:
         try:
@@ -194,17 +202,30 @@ def cmd_transcribe(args) -> None:
         waveforms.append((path, wav, duration))
 
     words = _cli_hotwords(args)
+    t_load = time.perf_counter()
     engine = Transcriber(*resolve_model(args))
+    load_s = time.perf_counter() - t_load
     if words or args.hotword_lambda is not None:
         n = engine.set_hotwords(words, args.hotword_lambda)
         log(f"{n} hotword{'s' if n != 1 else ''} active (lambda {engine.hw.lam:g})")
     for path, wav, duration in waveforms:
         t0 = time.perf_counter()
-        text, segments = engine.transcribe_long(wav)
-        log(f"{path.name}: {duration:.1f}s audio, {segments} segment"
-            f"{'s' if segments != 1 else ''}, decoded in "
-            f"{time.perf_counter() - t0:.2f}s")
-        print(text, flush=True)
+        text, segments, timed_words = engine.transcribe_long_timed(wav)
+        decode_s = time.perf_counter() - t0
+        n_seg = len(segments)
+        log(f"{path.name}: {duration:.1f}s audio, {n_seg} segment"
+            f"{'s' if n_seg != 1 else ''}, decoded in "
+            f"{decode_s:.2f}s" + (f" ({duration / decode_s:.0f}x real time, decode only; model load {load_s:.1f}s)"
+                                  if args.verbose and decode_s > 0 else ""))
+        if args.json:
+            # One JSON object per file, one line each. `segments` is the list of {id, start, end, text} (seconds from
+            # the start of the file; the texts joined with single spaces equal `text`), `segment_count` its length,
+            # `words` one {text, start, end} per word -- the same shapes as `fermion transcribe --json`.
+            print(json.dumps({"text": text, "file": str(path), "duration_s": round(duration, 3),
+                              "decode_s": round(decode_s, 4), "load_s": round(load_s, 2),
+                              "segment_count": n_seg, "segments": segments, "words": timed_words}), flush=True)
+        else:
+            print(text, flush=True)
 
 
 def _cli_hotwords(args) -> list:
@@ -511,7 +532,7 @@ class Handler(BaseHTTPRequestHandler):
             if field in form and field not in self.server.warned_fields:  # type: ignore[attr-defined]
                 self.server.warned_fields.add(field)  # type: ignore[attr-defined]
                 sys.stderr.write(f"[{BRAND}] note: `{field}` — {why}\n")
-        # `timestamp_granularities` selects `words` (word) in verbose_json; `segments` is always filled.
+        # `timestamp_granularities` selects `words` (word) in verbose_json; `segments` is always filled (OpenAI's default).
         granularities = _granularities(form)
         for g in granularities:
             key = "timestamp_granularities:" + g
@@ -561,15 +582,18 @@ class Handler(BaseHTTPRequestHandler):
             return
         out = {"text": text}
         if fmt == "verbose_json":
+            import cues
             out.update({
                 "task": "transcribe", "language": "english",
                 "duration": round(duration, 3),
-                "segments": segments,
+                # OpenAI's segment shape, one per sentence- or pause-sized stretch (cues.py, as in the pip package)
+                "segments": cues.openai_segments(segments),
             })
             if want_words:
                 out["words"] = [{"word": w["text"], "start": w["start"], "end": w["end"]} for w in words]
             out["x_phonon"] = {"decode_seconds": round(decode_s, 3),
                                "audio_segments": len(segments),
+                               "segment_count": len(segments),
                                **self.engine.describe()}
         self._send_json(200, out)
 
@@ -820,6 +844,10 @@ def main() -> None:
     p_tr = sub.add_parser(
         "transcribe", help="transcribe 16 kHz recordings to stdout")
     p_tr.add_argument("audio", nargs="+", help="16 kHz audio file(s)")
+    p_tr.add_argument("--json", action="store_true",
+                      help="print one JSON object per file: text, timings, segments (start, end, text) and words")
+    p_tr.add_argument("--verbose", action="store_true",
+                      help="also print the decode speed and the model load time on stderr")
     p_tr.add_argument("--hotwords", action="append", default=None, metavar="WORDS",
                       help='names and terms the decoder should favour, comma-separated (repeatable; @FILE reads one '
                            'term per line); at most 25. Default: none (the decode is unchanged)')

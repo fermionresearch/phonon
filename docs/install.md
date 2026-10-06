@@ -6,21 +6,30 @@
 pip install fermion-research
 ```
 
-Python 3.10 or newer. The distribution name is `fermion-research` (bare
+Python 3.10 or newer (macOS's built-in python3 is 3.9). On a Mac, create a virtual environment with a newer Python first:
+
+```bash
+python3.12 -m venv .venv && source .venv/bin/activate
+```
+
+The distribution name is `fermion-research` (bare
 `fermion` was already taken on PyPI); the command and the import package are
 both `fermion`. This installs the CLI and the language-model runtime on
 every platform (its dependencies are `torch`, `transformers`, `numpy`,
-`huggingface_hub`).
+`huggingface_hub`, and the CPU speech engine's `safetensors`, `soundfile`, `scipy`, `zstandard`).
 
 ## The speech runtime (Apple silicon)
 
-Speech needs a small MLX stack that is deliberately not a dependency of the
-package (the wheels are Apple-silicon-only, and Linux and Intel installs must
-not be forced to resolve them). On an Apple-silicon Mac, run:
+Speech on Apple silicon runs on a small MLX stack, which the `mlx` extra adds
+(the wheels are Apple-silicon-only, so the plain install never resolves them).
+On an Apple-silicon Mac, run:
 
 ```bash
-pip install mlx mlx-audio mlx-lm soundfile scipy zstandard
+pip install "fermion-research[mlx]"
 ```
+
+The same packages can also be installed by name:
+`pip install mlx mlx-audio mlx-lm soundfile scipy zstandard`.
 
 What each package is for:
 
@@ -46,7 +55,7 @@ On Linux (x86-64 and 64-bit ARM), x86-64 Windows and Intel Macs, the speech verb
 run on the CPU:
 
 ```bash
-pip install fermion-research torch safetensors soundfile scipy zstandard
+pip install fermion-research
 fermion transcribe phonon-2 recording.wav
 ```
 

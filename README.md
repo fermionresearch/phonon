@@ -14,25 +14,30 @@ download, is the current model, and Phonon-1 (415 MB), Phonon-1 Big (581 MB) and
 | Phonon-1 Micro (`phonon-1-micro`) | 285 MB | [huggingface.co/FermionResearch/Phonon-1-Micro](https://huggingface.co/FermionResearch/Phonon-1-Micro) |
 | Phonon-1 Big (`phonon-1-big`) | 581 MB | [huggingface.co/FermionResearch/Phonon-1-Big](https://huggingface.co/FermionResearch/Phonon-1-Big) |
 
+Phonon-2 for Core ML (Neural Engine): [huggingface.co/FermionResearch/Phonon-2-CoreML](https://huggingface.co/FermionResearch/Phonon-2-CoreML) · [github.com/fermionresearch/phonon-coreml](https://github.com/fermionresearch/phonon-coreml)
+
 Accuracy and speed for each model are on its model page ([fermionresearch.com/models/phonon-2](https://fermionresearch.com/models/phonon-2/) and the model cards above).
 
 ## Install
 
+Python 3.10 or newer (macOS's built-in python3 is 3.9). On a Mac, create a virtual environment with a newer Python first:
+
 ```bash
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install fermion-research
 ```
 
 **Apple silicon (MLX engine)**
 
 ```bash
-pip install mlx mlx-audio mlx-lm soundfile scipy zstandard
+pip install "fermion-research[mlx]"
 ```
 
-**Linux, Windows and Intel Mac CPUs.** On Linux, install torch from its CPU wheel index first, which skips the GPU build. Intel Macs: CPU engine (Python 3.10 to 3.12).
+**Linux, Windows and Intel Mac CPUs.** `pip install fermion-research` is the whole setup. On Linux, install torch from its CPU wheel index first, which skips the GPU build. Intel Macs: CPU engine (Python 3.10 to 3.12).
 
 ```bash
 pip install --no-deps torch --index-url https://download.pytorch.org/whl/cpu   # Linux only
-pip install fermion-research torch safetensors soundfile scipy zstandard
+pip install fermion-research
 ```
 
 Supported CPUs: x86-64 with SSE4.1 or newer and 64-bit Arm with NEON. AVX2, AVX-512 VNNI and AMX processors, and
@@ -43,13 +48,13 @@ tier with the same transcripts. `fermion describe` shows the features found on y
 **CPU container (amd64 and arm64)**
 
 ```bash
-docker run --rm -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cpu:2.0.6 transcribe phonon-2 /audio/recording.wav
+docker run --rm -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cpu:2.0.8 transcribe phonon-2 /audio/recording.wav
 ```
 
 **NVIDIA CUDA container**
 
 ```bash
-docker run --rm --gpus all -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.6 transcribe phonon-2 /audio/recording.wav
+docker run --rm --gpus all -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.7 transcribe phonon-2 /audio/recording.wav
 ```
 
 ## Run
@@ -70,6 +75,11 @@ curl -s http://127.0.0.1:8000/v1/audio/transcriptions \
   -F "file=@meeting.wav" \
   -F "model=phonon-2"
 ```
+
+### Streaming
+
+`phonon serve` also transcribes live audio over a WebSocket at `/v1/audio/stream`. The protocol and a reference client are in
+[docs/server.md](docs/server.md#get-v1audiostream-websocket).
 
 ### Dictation tools
 

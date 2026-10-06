@@ -14,7 +14,7 @@ RUN useradd --create-home --uid 1001 phonon \
     && mkdir -p /home/phonon/.cache/huggingface && chown -R phonon:phonon /home/phonon
 VOLUME ["/home/phonon/.cache"]
 
-COPY phonon2_cuda_engine.py hotwords.py fermion_container.py _archive.py _multipart.py _ws.py _live.py entrypoint.py /opt/phonon/
+COPY phonon2_cuda_engine.py hotwords.py cues.py fermion_container.py _archive.py _multipart.py _ws.py _live.py entrypoint.py /opt/phonon/
 
 ENV HF_HOME=/home/phonon/.cache/huggingface \
     PYTHONUNBUFFERED=1 \

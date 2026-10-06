@@ -432,14 +432,18 @@ class Transcriber:
         return text, len(segments)
 
     def transcribe_long_timed(self, wav, *, lock: threading.Lock | None = None, on_final=None, hotwords=None, hotword_lambda=None):
-        """(text, segments, words): `segments` = one {id, start, end, text} per decoded piece of audio (the whole file up to
-        30 s, else the live session's pause-cut segments), `words` = one {text, start, end} per word in seconds from the
-        start of the file (words_from_tokens, offsets from the session).  `text` is exactly `transcribe_long`'s."""
+        """(text, segments, words): `segments` = one {id, start, end, text} per sentence- or pause-sized stretch of speech in
+        seconds from the start of the file (cues.window_segments over each decoded piece -- the whole file up to 30 s,
+        else the pause-cut pieces -- the same rules as the pip package; texts joined with single spaces == `text`), `words` = one {text, start, end} per word in seconds from the start of the file
+        (words_from_tokens, offsets from the session).  `text` is exactly `transcribe_long`'s."""
+        import cues                                               # the same cue rules as the pip package
         n = len(wav)
         auto = self._automaton(hotwords, hotword_lambda)          # one automaton for every segment of this call
         if n / SAMPLE_RATE <= MAX_SECONDS:
             text, toks = self.segment_decode_timed(wav, lock, _auto=auto)
-            return text, [{"id": 0, "start": 0.0, "end": round(n / SAMPLE_RATE, 3), "text": text}], words_from_tokens(toks, 0.0, n / SAMPLE_RATE)
+            words = words_from_tokens(toks, 0.0, n / SAMPLE_RATE)
+            segs = cues.window_segments(words, text, 0.0, n / SAMPLE_RATE)
+            return text, [{"id": i, **sg} for i, sg in enumerate(cues.monotone(segs))], words
         from _live import LiveSession
         stash: list = []; offsets: list = []
         def decode(audio):
@@ -450,11 +454,14 @@ class Transcriber:
         session.feed_pcm(wav)
         text = session.finish()
         segments = []; words = []
-        for idx, ((start, length, seg_text), toks) in enumerate(zip(offsets, stash)):
+        for (start, length, seg_text), toks in zip(offsets, stash):
             off = start / SAMPLE_RATE
-            segments.append({"id": idx, "start": round(off, 3), "end": round((start + length) / SAMPLE_RATE, 3), "text": seg_text})
-            words.extend(words_from_tokens(toks, off, length / SAMPLE_RATE))
-        return text, segments, words
+            piece_words = words_from_tokens(toks, off, length / SAMPLE_RATE)
+            words.extend(piece_words)
+            # segments grouped from each decoded piece's word timings by the pip package's rules (cues.py);
+            # a piece with no text gives no segment.
+            segments.extend(cues.window_segments(piece_words, seg_text, off, (start + length) / SAMPLE_RATE))
+        return text, [{"id": i, **sg} for i, sg in enumerate(cues.monotone(segments))], words
 
     def describe(self) -> dict:
         return {"model": self.model_key, "model_name": self.entry["name"], "repo": self.entry["repo"], "profile": self.entry["profile"],

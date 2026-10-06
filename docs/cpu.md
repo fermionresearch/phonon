@@ -31,7 +31,7 @@ with a traceback and never downloads a model it cannot run.
 On Windows, the whole install is:
 
 ```sh
-pip install fermion-research torch safetensors soundfile scipy zstandard
+pip install fermion-research
 ```
 
 The plain torch wheel is already the CPU build there; a clean Windows
@@ -52,7 +52,7 @@ physical core from six cores up and every logical cpu on smaller parts elsewhere
 docker run --rm \
   -v /path/to/audio:/audio \
   -v phonon-cache:/home/phonon/.cache \
-  ghcr.io/fermionresearch/phonon-cpu:2.0.6 \
+  ghcr.io/fermionresearch/phonon-cpu:2.0.8 \
   transcribe phonon-2 /audio/recording.wav
 ```
 

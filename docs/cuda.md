@@ -3,16 +3,22 @@
 The CUDA image runs Phonon-2 on NVIDIA GPUs, and the Phonon-1 family has its own earlier image. Input is English,
 16 kHz audio, greedy decode, NVIDIA GPU required.
 
-Two images. **Phonon-2** ships as `ghcr.io/fermionresearch/phonon-cuda:1.0.6` (also `:latest`): it downloads the
+Two images. **Phonon-2** ships as `ghcr.io/fermionresearch/phonon-cuda:1.0.7` (also `:latest`): it downloads the
 model from the Hub on first run into the `phonon-cache` volume and serves `phonon-2`; built from [docker-phonon2/](../docker-phonon2/).
 
 ```bash
-docker run --rm --gpus all -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.6 transcribe phonon-2 /audio/recording.wav
-docker run --rm --gpus all -p 127.0.0.1:8000:8000 -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.6 serve phonon-2 --host 0.0.0.0 --port 8000 --api-key YOUR_KEY
+docker run --rm --gpus all -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.7 transcribe phonon-2 /audio/recording.wav
+docker run --rm --gpus all -p 127.0.0.1:8000:8000 -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.7 serve phonon-2 --host 0.0.0.0 --port 8000 --api-key YOUR_KEY
 ```
 
 The image takes hotwords like the pip package: `transcribe ... --hotwords "Ada, Quillon"`, and a `hotwords` or `prompt`
 field on the server ([hotwords.md](hotwords.md)).
+
+`transcribe ... --json` prints one JSON object per file: `text`, `duration_s`, `decode_s`, `load_s`, `segments` (one
+`{id, start, end, text}` per sentence or pause-sized stretch, in seconds from the start of the file) with
+`segment_count`, and `words` (`{text, start, end}`). The server's `verbose_json` carries the same segments in the
+OpenAI shape, and `words` with `timestamp_granularities=word` ([server.md](server.md)). `--verbose` adds the decode
+speed and model load time on stderr.
 
 The **Phonon-1 family** image is `ghcr.io/fermionresearch/phonon-cuda:0.3.0` (built from [docker/](../docker/)); it also
 comes as a bare single-utterance script. All three Phonon-1 models run in the container: `--model

@@ -3,6 +3,21 @@
 Speech commands are designed to fail with one plain message and exit code 1,
 never a traceback. This page lists the messages you may see and what to do.
 
+## "No matching distribution found for fermion-research"
+
+```
+ERROR: Could not find a version that satisfies the requirement fermion-research (from versions: none)
+ERROR: No matching distribution found for fermion-research
+```
+
+Phonon needs Python 3.10 or newer, and macOS's built-in `python3` is 3.9. Check with `python3 --version`, then install
+into a virtual environment made with a newer Python (from Homebrew or python.org):
+
+```bash
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install fermion-research
+```
+
 ## "the CPU speech engine runs on x86-64 and ARM Linux, x86-64 Windows and Apple silicon"
 
 Full message (from `fermion transcribe` on an unsupported machine):

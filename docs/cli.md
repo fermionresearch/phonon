@@ -51,7 +51,7 @@ positional arguments:
 | `MODEL` | First positional argument: `phonon-2`, `phonon-1`, `phonon-1-big`, `phonon-1-micro`, a repo id or a local model directory. Required. See [Model selection](#model-selection). |
 | `--threads N` | CPU engine threads (default one per physical core from six cores up, every logical cpu on smaller parts, performance cores on Apple silicon); same as `FERMION_CPU_THREADS`. |
 | `--json` | Emit a JSON object instead of bare text: text, timings, per-segment timestamps, word timestamps, `truncated` flag. |
-| `--verbose` | Print the decode configuration and timings to stderr (decode-only and wall-clock, separately, plus the segment count). |
+| `--verbose` | Print the decode configuration and timings to stderr (decode-only and wall-clock, separately, plus the window and segment counts). |
 | `--download-only` | Fetch and verify the model, print its local directory, then stop without decoding. |
 | `--hotwords WORDS` | Names and terms to favour, comma-separated (repeatable; `@FILE` reads a file). Up to 25 on Phonon-2. See [hotwords.md](hotwords.md). |
 | `--hotwords-file FILE` | Read hotwords from a file: one term per line, or comma-separated; `#` starts a comment. |
@@ -78,7 +78,7 @@ Audio is read from a file path, not from stdin. There is no `-` argument.
  "backend": "phonon2-five-value", "engine": "mlx",
  "duration_seconds": 4.2, "decode_seconds": 0.31, "wall_seconds": 2.4,
  "segment_count": 1,
- "segments": [{"id": 0, "start": 0.0, "end": 4.2, "text": "The transcript, word by word."}],
+ "segments": [{"id": 0, "start": 0.32, "end": 1.84, "text": "The transcript, word by word."}],
  "words": [{"text": "The", "start": 0.32, "end": 0.48},
            {"text": "transcript,", "start": 0.48, "end": 1.04},
            {"text": "word", "start": 1.12, "end": 1.36},
@@ -88,12 +88,22 @@ Audio is read from a file path, not from stdin. There is no `-` argument.
 ```
 
 `decode_seconds` is the decode alone; `wall_seconds` is the whole command
-from model resolution to output, including the model load. Audio up to 35 s
-is one segment. Longer files are decoded in 25-35 s windows cut at pauses,
-one `segments` entry each (start and end in seconds), and the window
-transcripts are joined with single spaces in `text`. `truncated` is true if
-any window used its whole token budget, which means part of that window's
-audio may be missing from the transcript.
+from model resolution to output, including the model load.
+
+`segments` has one entry per sentence or pause-sized stretch of speech, with
+`start` and `end` in seconds from the start of the file (long files
+included) and that stretch's text. A segment closes at the end of a sentence
+or at a pause of 0.8 s or more, and runs at most 7 s and two 42-character
+lines, so it can be used as a subtitle cue as it is. The segment texts
+joined with single spaces equal `text`. `segment_count` is the number of
+entries. Phonon-1, whose decoder has no timings, gives one segment per
+decoded window instead.
+
+Audio up to 35 s is decoded in one call. Longer files are decoded in
+25-35 s windows cut at pauses, and the window transcripts are joined with
+single spaces in `text`. `truncated` is true if any window used its whole
+token budget, which means part of that window's audio may be missing from
+the transcript.
 
 ### Word timestamps
 
