@@ -24,7 +24,7 @@ published models (`phonon` is accepted on any server); a server running
 Phonon-1 Big answers to `phonon-1-big`, not `phonon-1`, which names the
 flagship model.
 
-`latest` is the Phonon-2 image (`1.0.4`); pin `0.3.0` for the Phonon-1 family.
+`latest` is the Phonon-2 image (`1.0.8`); pin `0.3.0` for the Phonon-1 family.
 
 ## Transcribe files
 

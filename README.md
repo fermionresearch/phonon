@@ -48,13 +48,13 @@ tier with the same transcripts. `fermion describe` shows the features found on y
 **CPU container (amd64 and arm64)**
 
 ```bash
-docker run --rm -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cpu:2.0.8 transcribe phonon-2 /audio/recording.wav
+docker run --rm -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cpu:2.0.9 transcribe phonon-2 /audio/recording.wav
 ```
 
 **NVIDIA CUDA container**
 
 ```bash
-docker run --rm --gpus all -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.7 transcribe phonon-2 /audio/recording.wav
+docker run --rm --gpus all -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.8 transcribe phonon-2 /audio/recording.wav
 ```
 
 ## Run

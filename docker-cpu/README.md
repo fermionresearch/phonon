@@ -1,6 +1,6 @@
 # Phonon-1 CPU Docker image
 
-This is the Phonon-1 family image, tag `0.1.0`. The current CPU image, `ghcr.io/fermionresearch/phonon-cpu:2.0.4`
+This is the Phonon-1 family image, tag `0.1.0`. The current CPU image, `ghcr.io/fermionresearch/phonon-cpu:2.0.9`
 (also `latest`), runs Phonon-2 on amd64 and arm64 and is documented in [docs/cpu.md](../docs/cpu.md); the run lines
 below do not apply to it.
 

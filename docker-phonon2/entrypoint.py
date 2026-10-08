@@ -43,7 +43,7 @@ from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-VERSION = "1.0.7"
+VERSION = "1.0.8"
 BRAND = "phonon-cuda"
 
 #: The published models this image serves. Release facts (archive filename,

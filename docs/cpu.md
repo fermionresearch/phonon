@@ -52,7 +52,7 @@ physical core from six cores up and every logical cpu on smaller parts elsewhere
 docker run --rm \
   -v /path/to/audio:/audio \
   -v phonon-cache:/home/phonon/.cache \
-  ghcr.io/fermionresearch/phonon-cpu:2.0.8 \
+  ghcr.io/fermionresearch/phonon-cpu:2.0.9 \
   transcribe phonon-2 /audio/recording.wav
 ```
 
