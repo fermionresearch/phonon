@@ -385,7 +385,7 @@ stt.example.com {
 
 ## The CUDA container speaks this API too
 
-The NVIDIA Docker image (`ghcr.io/fermionresearch/phonon-cuda`, `1.0.8` for Phonon-2, see
+The NVIDIA Docker image (`ghcr.io/fermionresearch/phonon-cuda`, `1.0.9` for Phonon-2.5, Phonon-2.5 English and Phonon-2, see
 [docs/cuda.md](cuda.md) and [docker/README.md](../docker/README.md)) serves this same API: `POST /v1/audio/transcriptions` with the
 same multipart shape and error envelope, and `GET /v1/audio/stream` with the
 **identical WebSocket protocol** — same config frame, same

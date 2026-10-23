@@ -1,14 +1,15 @@
 # Running on NVIDIA
 
-The CUDA image runs Phonon-2 on NVIDIA GPUs, and the Phonon-1 family has its own earlier image. Input is English,
-16 kHz audio, greedy decode, NVIDIA GPU required.
+The CUDA image runs Phonon-2.5, Phonon-2.5 English and Phonon-2 on NVIDIA GPUs, and the Phonon-1 family has its own
+earlier image. Input is 16 kHz audio, greedy decode, NVIDIA GPU required.
 
-Two images. **Phonon-2** ships as `ghcr.io/fermionresearch/phonon-cuda:1.0.8` (also `:latest`): it downloads the
-model from the Hub on first run into the `phonon-cache` volume and serves `phonon-2`; built from [docker-phonon2/](../docker-phonon2/).
+Two images. **Phonon-2.5 / Phonon-2.5 English / Phonon-2** ship as `ghcr.io/fermionresearch/phonon-cuda:1.0.9` (also `:latest`):
+it downloads the named model from the Hub on first run into the `phonon-cache` volume and serves it under its name
+(`phonon-2.5`, `phonon-2.5-en`, `phonon-2`; `phonon-2` when no model is named); built from [docker-phonon2/](../docker-phonon2/).
 
 ```bash
-docker run --rm --gpus all -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.8 transcribe phonon-2 /audio/recording.wav
-docker run --rm --gpus all -p 127.0.0.1:8000:8000 -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.8 serve phonon-2 --host 0.0.0.0 --port 8000 --api-key YOUR_KEY
+docker run --rm --gpus all -v "$PWD":/audio -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.9 transcribe phonon-2.5 /audio/recording.wav
+docker run --rm --gpus all -p 127.0.0.1:8000:8000 -v phonon-cache:/home/phonon/.cache ghcr.io/fermionresearch/phonon-cuda:1.0.9 serve phonon-2.5 --host 0.0.0.0 --port 8000 --api-key YOUR_KEY
 ```
 
 The image takes hotwords like the pip package: `transcribe ... --hotwords "Ada, Quillon"`, and a `hotwords` or `prompt`
