@@ -1,13 +1,13 @@
 # Running on CPUs
 
-The CPU engine runs Phonon-2 and the Phonon-1 family, on Linux (x86-64 and Arm), Windows and
+The CPU engine runs Phonon-2.5, Phonon-2.5 English, Phonon-2 and the Phonon-1 family, on Linux (x86-64 and Arm), Windows and
 macOS with no GPU. Supported machines are x86-64 with SSE4.1 or newer and 64-bit Arm with NEON under Linux, x86-64
 Windows, Apple silicon Macs, and Intel Macs (Phonon-2). The engine reads the processor's features before it loads a kernel and picks the
 tier they allow: on x86-64 AVX2, AVX-512 VNNI and AMX processors run faster tiers; on Arm, dotprod and i8mm processors
 do. Processors without those instructions (Raspberry Pi 3 and 4, Cortex-A53/A72 boards, x86-64 parts before AVX2) run
 the baseline tier, which gives the same transcripts and is slower. `fermion describe` prints the features found and the
 tier chosen. The models are the same published archives the other
-engines use (164 MB, 415 MB, 581 MB and 285 MB downloads), decoded with the same configuration as the other engines (greedy
+engines use (156 MB, 158 MB, 158 MB, 415 MB, 581 MB and 285 MB downloads), decoded with the same configuration as the other engines (greedy
 decode, temperature 0.0). Every command names its model, on every platform. Name the model. Phonon never guesses.
 
 Input envelope: English, 16 kHz audio (mono or stereo). Longer recordings

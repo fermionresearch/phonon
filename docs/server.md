@@ -186,7 +186,7 @@ monitoring works without credentials). A speech server answers:
   "status": "ok",
   "model": "FermionResearch/Phonon-2",
   "kind": "speech",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "repo": "FermionResearch/Phonon-2",
   "profile": "five-value",
   "sha256": "…",

@@ -46,7 +46,8 @@ Then:
 
 ```bash
 fermion models                       # shows what is published and what is installed
-fermion transcribe phonon-2 clip.wav # first run downloads Phonon-2 (164 MB)
+fermion transcribe phonon-2 clip.wav # first run downloads Phonon-2 (158 MB)
+fermion transcribe phonon-2.5 clip.wav # Phonon-2.5, 25 languages (156 MB)
 ```
 
 ## Linux, Windows and Intel Macs
@@ -141,7 +142,8 @@ The cache layout the CLI reads is:
 - `<Org__Repo>` is the repo id with `/` replaced by `__`, for example
   `FermionResearch__Phonon-2`.
 - `<unpack_dir>` is the model's directory name:
-  `model_phonon2_c4c_int6` for Phonon-2, `model_v18_mlx_head8audio6_quint5`
+  `model_phonon25_f25x1_48k_int6` for Phonon-2.5, `model_phonon25_en_pen2u1125_int6` for
+  Phonon-2.5 English, `model_phonon2_c4c_int6` for Phonon-2, `model_v18_mlx_head8audio6_quint5`
   for Phonon-1, `model_v18_mlx_quint5` and `model_v18_mlx_hybrid4_quint5` for
   Phonon-1 Big and Phonon-1 Micro (`fermion models --json` prints each model's
   exact expected path on your machine).
@@ -168,7 +170,9 @@ still tries to reach the Hugging Face Hub.
 
 | Model | Download | Unpacked on disk | Peak during install |
 |---|---|---|---|
-| `FermionResearch/Phonon-2` | 164 MB | 178 MB | ~342 MB |
+| `FermionResearch/Phonon-2.5` | 156 MB | 178 MB | ~336 MB |
+| `FermionResearch/Phonon-2.5-English` | 158 MB | 178 MB | ~336 MB |
+| `FermionResearch/Phonon-2` | 158 MB | 178 MB | ~336 MB |
 | `FermionResearch/Phonon-1` | 415 MB | 455 MB | ~870 MB |
 | `FermionResearch/Phonon-1-Micro` | 285 MB | 331 MB | ~616 MB |
 | `FermionResearch/Phonon-1-Big` | 581 MB | 822 MB | ~1.4 GB |

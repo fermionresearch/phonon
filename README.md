@@ -2,14 +2,15 @@
 
 Phonon is the speech recognition engine from Fermion Research. It runs the Phonon models on Apple silicon through MLX,
 on CPUs under Linux (x86-64 and Arm), Windows and macOS (Apple silicon and Intel Macs), and on NVIDIA GPUs through the CUDA image. It transcribes files
-from the command line, transcribes the microphone live, and serves an OpenAI-compatible endpoint. Phonon-2, a 164 MB
-download, is the current model, and Phonon-1 (415 MB), Phonon-1 Big (581 MB) and Phonon-1 Micro (285 MB) also run.
+from the command line, transcribes the microphone live, and serves an OpenAI-compatible endpoint. Phonon-2.5 (156 MB download) transcribes 25 languages, Phonon-2.5 English (158 MB) and Phonon-2 (158 MB) are the English models, and Phonon-1 (415 MB), Phonon-1 Big (581 MB) and Phonon-1 Micro (285 MB) also run.
 
 ## Models
 
 | Model | Download | Weights |
 |---|--:|---|
-| **Phonon-2** (`phonon-2`) | 164 MB | [huggingface.co/FermionResearch/Phonon-2](https://huggingface.co/FermionResearch/Phonon-2) |
+| **Phonon-2.5** (`phonon-2.5`), 25 languages | 156 MB | [huggingface.co/FermionResearch/Phonon-2.5](https://huggingface.co/FermionResearch/Phonon-2.5) |
+| **Phonon-2.5 English** (`phonon-2.5-en`) | 158 MB | [huggingface.co/FermionResearch/Phonon-2.5-English](https://huggingface.co/FermionResearch/Phonon-2.5-English) |
+| Phonon-2 (`phonon-2`) | 158 MB | [huggingface.co/FermionResearch/Phonon-2](https://huggingface.co/FermionResearch/Phonon-2) |
 | Phonon-1 (`phonon-1`) | 415 MB | [huggingface.co/FermionResearch/Phonon-1](https://huggingface.co/FermionResearch/Phonon-1) |
 | Phonon-1 Micro (`phonon-1-micro`) | 285 MB | [huggingface.co/FermionResearch/Phonon-1-Micro](https://huggingface.co/FermionResearch/Phonon-1-Micro) |
 | Phonon-1 Big (`phonon-1-big`) | 581 MB | [huggingface.co/FermionResearch/Phonon-1-Big](https://huggingface.co/FermionResearch/Phonon-1-Big) |
@@ -68,6 +69,8 @@ phonon transcribe meeting.wav --hotwords "Ada, Quillon"    # favour names and te
 phonon listen                               # live microphone transcription (Apple silicon)
 phonon serve                                # OpenAI-compatible HTTP server on 127.0.0.1:8000
 fermion transcribe phonon-2 meeting.wav     # the same, naming the model
+fermion transcribe phonon-2.5 reunion.wav   # Phonon-2.5: 25 languages, detected from the audio
+fermion transcribe phonon-2.5-en call.wav   # Phonon-2.5 English
 ```
 
 ```bash
@@ -116,7 +119,7 @@ The CUDA image is built from [docker-phonon2/](docker-phonon2/) and the CPU imag
 
 ## Licence
 
-The Phonon-2 weights are released under CC-BY-4.0. They are a derivative of NVIDIA's parakeet-tdt-0.6b-v3, with the changes
+The Phonon-2.5, Phonon-2.5 English and Phonon-2 weights are released under CC-BY-4.0. They are a derivative of NVIDIA's parakeet-tdt-0.6b-v3, with the changes
 listed in the [NOTICE file of the weights repository](https://huggingface.co/FermionResearch/Phonon-2/blob/main/NOTICE). The
 Phonon-1 family weights and the command line are released under Apache-2.0, and Phonon-1 is built on
 [Qwen/Qwen3-ASR-0.6B](https://huggingface.co/Qwen/Qwen3-ASR-0.6B), also under Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

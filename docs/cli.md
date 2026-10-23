@@ -1,7 +1,7 @@
 # CLI reference
 
 The `fermion` command ships in the `fermion-research` pip package
-(version 0.2.12). The fermion command runs the Phonon speech models and the Neutrino
+(version 0.2.13). The fermion command runs the Phonon speech models and the Neutrino
 language models from one install. This page covers the speech commands in full and the
 Neutrino commands in brief.
 
@@ -39,8 +39,8 @@ usage: fermion transcribe [-h] [--json] [--verbose] [--threads N]
                           [MODEL AUDIO ...]
 
 positional arguments:
-  MODEL AUDIO           the model (phonon-2, phonon-1, phonon-1-big,
-                        phonon-1-micro, a repo id or a local model directory)
+  MODEL AUDIO           the model (phonon-2.5, phonon-2.5-en, phonon-2, phonon-1,
+                        phonon-1-big, phonon-1-micro, a repo id or a local model directory)
                         followed by the audio file (wav/flac/ogg/aiff);
                         `fermion transcribe phonon-2 meeting.wav`
 ```
@@ -48,7 +48,7 @@ positional arguments:
 | Argument | Meaning |
 |---|---|
 | `audio` | Path to an audio file. Anything libsndfile reads: wav, flac, ogg, aiff. Any sample rate and channel count (resampled to 16 kHz mono internally). mp3/m4a are not read; convert first: `ffmpeg -i in.m4a -ar 16000 -ac 1 out.wav`. |
-| `MODEL` | First positional argument: `phonon-2`, `phonon-1`, `phonon-1-big`, `phonon-1-micro`, a repo id or a local model directory. Required. See [Model selection](#model-selection). |
+| `MODEL` | First positional argument: `phonon-2.5`, `phonon-2.5-en`, `phonon-2`, `phonon-1`, `phonon-1-big`, `phonon-1-micro`, a repo id or a local model directory. Required. See [Model selection](#model-selection). |
 | `--threads N` | CPU engine threads (default one per physical core from six cores up, every logical cpu on smaller parts, performance cores on Apple silicon); same as `FERMION_CPU_THREADS`. |
 | `--json` | Emit a JSON object instead of bare text: text, timings, per-segment timestamps, word timestamps, `truncated` flag. |
 | `--verbose` | Print the decode configuration and timings to stderr (decode-only and wall-clock, separately, plus the window and segment counts). |
@@ -308,15 +308,16 @@ fermion models --all    # also show profiles retained but never published
 
 Every speech verb takes the model as its first argument, a short alias, a repo id, or
 a local directory holding an unpacked model. Name the model. Phonon never guesses. There is deliberately no
-`--profile` flag: each model is its own repository, so the model is the
-profile.
+`--profile` flag: each model is its own repository.
 
-| Model (repo id) | Aliases | Profile | Download | On disk |
-|---|---|---|---|---|
-| `FermionResearch/Phonon-2` | `phonon-2`, `phonon2`, `phonon`, `speech`, `stt`, `asr` | `five-value` | 164 MB | 178 MB |
-| `FermionResearch/Phonon-1` | `phonon-1` | `audio6` | 415 MB | 455 MB |
-| `FermionResearch/Phonon-1-Big` | `phonon-1-big`, `phonon-big`, `big` | `parity` | 581 MB | 822 MB |
-| `FermionResearch/Phonon-1-Micro` | `phonon-1-micro`, `phonon-micro`, `micro` | `micro` | 285 MB | 331 MB |
+| Model (repo id) | Aliases | Download | On disk |
+|---|---|---|---|
+| `FermionResearch/Phonon-2.5` | `phonon-2.5`, `phonon25`, `phonon-2-5` | 156 MB | 178 MB |
+| `FermionResearch/Phonon-2.5-English` | `phonon-2.5-en`, `phonon25-en`, `phonon-2.5-english` | 158 MB | 178 MB |
+| `FermionResearch/Phonon-2` | `phonon-2`, `phonon2`, `phonon`, `speech`, `stt`, `asr` | 158 MB | 178 MB |
+| `FermionResearch/Phonon-1` | `phonon-1` | 415 MB | 455 MB |
+| `FermionResearch/Phonon-1-Big` | `phonon-1-big`, `phonon-big`, `big` | 581 MB | 822 MB |
+| `FermionResearch/Phonon-1-Micro` | `phonon-1-micro`, `phonon-micro`, `micro` | 285 MB | 331 MB |
 
 - Aliases and repo ids are case-insensitive
   (`fermion transcribe fermionresearch/phonon-1 clip.wav` works).
@@ -336,6 +337,8 @@ fermion transcribe: name the model. Phonon never guesses.
   fermion transcribe phonon-2 meeting.wav
 
 Models (alias, kind, repo):
+  phonon-2.5, phonon25               speech   FermionResearch/Phonon-2.5
+  phonon-2.5-en, phonon25-en         speech   FermionResearch/Phonon-2.5-English
   phonon-2, phonon2, phonon          speech   FermionResearch/Phonon-2
   phonon-1                           speech   FermionResearch/Phonon-1
   phonon-1-big, phonon-big, big      speech   FermionResearch/Phonon-1-Big
