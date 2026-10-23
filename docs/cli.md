@@ -1,7 +1,7 @@
 # CLI reference
 
 The `fermion` command ships in the `fermion-research` pip package
-(version 0.2.13). The fermion command runs the Phonon speech models and the Neutrino
+(version 0.2.14). The fermion command runs the Phonon speech models and the Neutrino
 language models from one install. This page covers the speech commands in full and the
 Neutrino commands in brief.
 
@@ -41,13 +41,13 @@ usage: fermion transcribe [-h] [--json] [--verbose] [--threads N]
 positional arguments:
   MODEL AUDIO           the model (phonon-2.5, phonon-2.5-en, phonon-2, phonon-1,
                         phonon-1-big, phonon-1-micro, a repo id or a local model directory)
-                        followed by the audio file (wav/flac/ogg/aiff);
+                        followed by the audio file (wav/flac/ogg/mp3/aiff);
                         `fermion transcribe phonon-2 meeting.wav`
 ```
 
 | Argument | Meaning |
 |---|---|
-| `audio` | Path to an audio file. Anything libsndfile reads: wav, flac, ogg, aiff. Any sample rate and channel count (resampled to 16 kHz mono internally). mp3/m4a are not read; convert first: `ffmpeg -i in.m4a -ar 16000 -ac 1 out.wav`. |
+| `audio` | Path to an audio file. Anything libsndfile reads: wav, flac, ogg/opus, aiff, and mp3 (libsndfile 1.1 or newer, which the PyPI wheels and both images ship). Any sample rate and channel count (resampled to 16 kHz mono internally). m4a/aac/webm are not read; convert first: `ffmpeg -i in.m4a -ar 16000 -ac 1 out.wav`. |
 | `MODEL` | First positional argument: `phonon-2.5`, `phonon-2.5-en`, `phonon-2`, `phonon-1`, `phonon-1-big`, `phonon-1-micro`, a repo id or a local model directory. Required. See [Model selection](#model-selection). |
 | `--threads N` | CPU engine threads (default one per physical core from six cores up, every logical cpu on smaller parts, performance cores on Apple silicon); same as `FERMION_CPU_THREADS`. |
 | `--json` | Emit a JSON object instead of bare text: text, timings, per-segment timestamps, word timestamps, `truncated` flag. |

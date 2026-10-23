@@ -202,10 +202,11 @@ To re-check independently:
 - The pinned digests also appear on `GET /health` (`sha256`) and in each
   repo's `config.json`, so all three sources can be compared by hand.
 
-## mp3 / m4a input
+## m4a / aac / webm input
 
-`soundfile` reads what libsndfile reads: wav, flac, ogg, aiff. Compressed
-mp3/m4a is refused with the conversion line:
+`soundfile` reads what libsndfile reads: wav, flac, ogg/opus, aiff, and mp3
+(libsndfile 1.1 or newer, which the PyPI wheels bundle). m4a/aac/webm is
+refused with the conversion line:
 
 ```
 ffmpeg -i in.m4a -ar 16000 -ac 1 out.wav

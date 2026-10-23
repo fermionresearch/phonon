@@ -38,7 +38,7 @@ What each package is for:
 | `mlx` | Apple's array framework; the model decodes through MLX's quantized matmuls on the Apple GPU (Metal). |
 | `mlx-audio` | The audio model implementation the engine drives; also pulls in `sounddevice`, which `fermion listen` uses for microphone capture. |
 | `mlx-lm` | Sampling utilities the decode path imports. |
-| `soundfile` | Audio file reading (libsndfile: wav, flac, ogg, aiff). |
+| `soundfile` | Audio file reading (libsndfile: wav, flac, ogg/opus, aiff, and mp3 with libsndfile 1.1 or newer, which the PyPI wheels bundle). |
 | `scipy` | Resampling arbitrary input rates to the model's 16 kHz. |
 | `zstandard` | Decompresses the zstd model archive at install time. macOS ships no `zstd` tool, so without this wheel a clean Mac could download an archive it cannot unpack. |
 

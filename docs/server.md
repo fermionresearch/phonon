@@ -37,7 +37,7 @@ work unmodified against `base_url=http://127.0.0.1:8000/v1`.
 
 | Field | Required | Meaning |
 |---|---|---|
-| `file` | yes | The audio. Anything libsndfile decodes: wav, flac, ogg, aiff (any rate/channels; resampled to 16 kHz mono). mp3/m4a are rejected with a message that includes the ffmpeg conversion line. |
+| `file` | yes | The audio. Anything libsndfile decodes: wav, flac, ogg/opus, aiff and mp3 (any rate/channels; resampled to 16 kHz mono). m4a/aac/webm are rejected with a message that includes the ffmpeg conversion line. |
 | `model` | no | Accepted and checked, never silently ignored: if it does not name the model this process serves (repo id, alias, or `--served-model-name`), the request gets a 404 `model_not_found` rather than a transcript from a model it did not ask for. |
 | `response_format` | no | `json` (default), `text`, or `verbose_json`. Anything else is a 400. |
 | `timestamp_granularities` | no | `word`, `segment`, or both (the OpenAI SDKs send `timestamp_granularities[]` once per value; a comma-separated string works too). With `word`, `verbose_json` carries `words`; `segments` is always filled (`segment` is the default, as in the OpenAI API). Needs `response_format=verbose_json`. |
@@ -54,11 +54,9 @@ implemented; each is noted once per process on the server's stderr
 `timestamp_granularities` value other than `word` or `segment` is noted once
 and ignored.
 
-Request bodies are capped at 32 MB, and chunked transfer encoding is not
-supported. Audio longer than 35 s is decoded in 25-35 s windows cut at
-pauses; the 32 MB body cap
-holds about 17 minutes of 16 kHz 16-bit mono wav, so split anything longer
-than that before uploading.
+Audio uploads are capped at 1 GB (about nine hours of 16 kHz 16-bit mono wav; other request bodies at 32 MB), and
+chunked transfer encoding is not supported. Audio longer than 35 s is decoded in 25-35 s windows cut at
+pauses.
 
 ### Responses
 
@@ -140,7 +138,7 @@ Errors use the OpenAI envelope on every route:
 | 400 | No `file` part, malformed multipart, undecodable audio (`code: invalid_audio`), unsupported `response_format`, chunked body. |
 | 401 | `--api-key` set and the bearer token is missing or wrong (`code: invalid_api_key`). |
 | 404 | Unknown route, or `model` names something this process does not serve. |
-| 413 | Body over 32 MB. |
+| 413 | Audio upload over 1 GB (other bodies: over 32 MB). |
 
 ### curl examples
 
@@ -186,7 +184,7 @@ monitoring works without credentials). A speech server answers:
   "status": "ok",
   "model": "FermionResearch/Phonon-2",
   "kind": "speech",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "repo": "FermionResearch/Phonon-2",
   "profile": "five-value",
   "sha256": "…",
@@ -385,7 +383,7 @@ stt.example.com {
 
 ## The CUDA container speaks this API too
 
-The NVIDIA Docker image (`ghcr.io/fermionresearch/phonon-cuda`, `1.0.9` for Phonon-2.5, Phonon-2.5 English and Phonon-2, see
+The NVIDIA Docker image (`ghcr.io/fermionresearch/phonon-cuda`, `1.0.10` for Phonon-2.5, Phonon-2.5 English and Phonon-2, see
 [docs/cuda.md](cuda.md) and [docker/README.md](../docker/README.md)) serves this same API: `POST /v1/audio/transcriptions` with the
 same multipart shape and error envelope, and `GET /v1/audio/stream` with the
 **identical WebSocket protocol** — same config frame, same
