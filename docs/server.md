@@ -184,7 +184,7 @@ monitoring works without credentials). A speech server answers:
   "status": "ok",
   "model": "FermionResearch/Phonon-2",
   "kind": "speech",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "repo": "FermionResearch/Phonon-2",
   "profile": "five-value",
   "sha256": "…",
@@ -216,10 +216,10 @@ The standard OpenAI list shape with one entry, the served model id
   is required.
 - `--api-key KEY` requires `Authorization: Bearer KEY` on every `/v1/*`
   request (compared in constant time). `/health` stays open.
-- Binding a non-loopback host (`--host 0.0.0.0`) prints a warning at
-  startup; without `--api-key` that exposes an unauthenticated model server
-  beyond this machine. Set a key before you widen the bind, or better, keep
-  the loopback bind and put a reverse proxy in front (below).
+- A non-loopback host (`--host 0.0.0.0`) requires `--api-key`; without one,
+  `fermion serve` refuses to start rather than expose an unauthenticated model
+  server beyond this machine. Or keep the loopback bind and put a reverse
+  proxy in front (below).
 
 ## Unix socket and dictation tools
 
@@ -383,7 +383,7 @@ stt.example.com {
 
 ## The CUDA container speaks this API too
 
-The NVIDIA Docker image (`ghcr.io/fermionresearch/phonon-cuda`, `1.0.10` for Phonon-2.5, Phonon-2.5 English and Phonon-2, see
+The NVIDIA Docker image (`ghcr.io/fermionresearch/phonon-cuda`, `1.0.11` for Phonon-2.5, Phonon-2.5 English and Phonon-2, see
 [docs/cuda.md](cuda.md) and [docker/README.md](../docker/README.md)) serves this same API: `POST /v1/audio/transcriptions` with the
 same multipart shape and error envelope, and `GET /v1/audio/stream` with the
 **identical WebSocket protocol** — same config frame, same

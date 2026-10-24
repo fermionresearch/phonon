@@ -1,7 +1,7 @@
 # CLI reference
 
 The `fermion` command ships in the `fermion-research` pip package
-(version 0.2.14). The fermion command runs the Phonon speech models and the Neutrino
+(version 0.2.15). The fermion command runs the Phonon speech models and the Neutrino
 language models from one install. This page covers the speech commands in full and the
 Neutrino commands in brief.
 
